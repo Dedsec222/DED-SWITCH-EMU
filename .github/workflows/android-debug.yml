@@ -41,6 +41,12 @@ jobs:
           test -d "$ANDROID_HOME/ndk/28.2.13676358"
           test -d "$ANDROID_HOME/cmake/3.31.5"
 
+      - name: Install shader compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y glslang-tools
+          glslangValidator --version
+
       - name: Build ARM64 debug APK
         run: |
           chmod +x .ci/android/build.sh
