@@ -1,90 +1,144 @@
-<!--
-# SPDX-FileCopyrightText: Copyright 2025 Eden Emulator Project
-# SPDX-License-Identifier: GPL-3.0-or-later
+<div align="center">
 
-# SPDX-FileCopyrightText: 2018 yuzu Emulator Project
-# SPDX-License-Identifier: GPL-2.0-or-later
--->
-<!-- lang: en-GB -->
+<img src="./ded-switch-logo.png" width="240" alt="DED SWITCH Emulator">
 
-<h1 align="center">
-  <br>
-  <a href="https://git.eden-emu.dev/eden-emu/eden"><img src="./ded-switch-logo.png" alt="DED SWITCH" width="200"></a>
-  <br>
-  <b>Eden</b>
-  <br>
-</h1>
+# DED SWITCH
 
-<h4 align="center"><b>Eden</b> is a free and open-source (FOSS) Switch 1 emulator started by developer Camille LaVey.
-<br>
-Written in C++, with builds for Windows, Linux, macOS, Android, FreeBSD and more.
-</h4>
+### PROJECT ADRENO BEAST
 
-<p align="center">
-    </a>
-    <a href="https://discord.gg/HstXbPch7X">
-        <img src="https://img.shields.io/discord/1367654015269339267?color=5865F2&label=Eden&logo=discord&logoColor=white"
-            alt="Discord">
-    </a>
-    <a href="https://stt.gg/qKgFEAbH">
-        <img src="https://img.shields.io/revolt/invite/qKgFEAbH?color=d61f3a&label=Stoat"
-            alt="Stoat">
-    </a>
-</p>
+**A community-driven Nintendo Switch emulation project.**
 
-<p align="center">
-  <a href="#compatibility">Compatibility</a> |
-  <a href="#development">Development</a> |
-  <a href="#building">Building</a> |
-  <a href="#download">Download</a> |
-  <a href="#support">Support</a> |
-  <a href="#license">License</a>
-</p>
+Built with performance, compatibility and Android development in mind.
 
-## Compatibility
+[Architecture](#architecture) · [Roadmap](#roadmap) · [Building](#building) · [License](#license)
 
-The emulator is capable of running most commercial games at full speed, provided you meet the necessary hardware requirements.
+</div>
 
-A list of supported games will be available in future. Please be patient.
+---
 
-Check out our [website](https://eden-emu.dev) for the latest news on exciting features, monthly progress reports, and more!
+## About DED SWITCH
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/eden-emulator.svg)](https://repology.org/project/eden-emulator/versions)
+DED SWITCH is an experimental emulator project based on the existing open-source emulator codebase.
 
-## Contribute
+Our goal is to develop a distinct emulator experience with a redesigned identity, improved Android integration, performance-focused development and a modular architecture.
 
-To contribute to Eden; be it financially, code, bug reports, or otherwise, see our [Contributing guidelines](./CONTRIBUTING.md).
+Our first hardware development target is:
 
-## Documentation
+| Component | Target |
+|---|---|
+| Device | Samsung Galaxy S25 Ultra |
+| Processor | Snapdragon 8 Elite |
+| GPU | Adreno 830 |
+| Architecture | ARM64 |
+| Graphics API | Vulkan |
 
-We have a user manual! See our [User Handbook](./docs/user/README.md).
+These are development targets, not a guarantee of game compatibility or performance.
+
+## Project Vision
+
+DED SWITCH aims to develop:
+
+- A redesigned gaming interface.
+- Per-game configuration and profiles.
+- Vulkan graphics and driver management.
+- Adaptive performance management.
+- Controller configuration and calibration.
+- Touchscreen control customization.
+- Save Vault and backup protection.
+- Diagnostic and recovery tools.
+- Secure updates and release verification.
+
+## Architecture
+
+The project is intended to use a modular architecture:
+
+| Module | Purpose |
+|---|---|
+| Graphics Engine | Vulkan rendering and GPU integration |
+| Performance Engine | Frame pacing and performance management |
+| Driver Manager | Compatible user-space driver management |
+| Controller Engine | Controller input and mapping |
+| Save Vault | Game save protection and backup |
+| Recovery Engine | Diagnostics and safe recovery |
+| Release System | Build verification and update management |
+
+Modules will be integrated incrementally and validated against the existing emulator backend.
+
+## Roadmap
+
+### Phase 1 — Foundation
+- [x] Import upstream source code.
+- [x] Establish the DED SWITCH repository.
+- [x] Initial branding and README rework.
+- [ ] Complete source audit.
+- [ ] Verify Android build environment.
+
+### Phase 2 — Android and Graphics
+- [ ] Android integration improvements.
+- [ ] Vulkan compatibility testing.
+- [ ] Adreno driver compatibility evaluation.
+- [ ] Graphics diagnostics.
+
+### Phase 3 — Performance
+- [ ] Frame pacing improvements.
+- [ ] Adaptive resolution research.
+- [ ] Thermal-aware performance profiles.
+- [ ] Performance monitoring.
+
+### Phase 4 — Controller System
+- [ ] Unified controller architecture.
+- [ ] Bluetooth and USB input integration.
+- [ ] Custom touchscreen layouts.
+- [ ] Calibration and diagnostics.
+
+### Phase 5 — Save Vault
+- [ ] Save protection architecture.
+- [ ] Automated backup.
+- [ ] Recovery and restore validation.
+- [ ] Storage management.
+
+### Phase 6 — Release Engineering
+- [ ] Reproducible build pipeline.
+- [ ] Signed release verification.
+- [ ] Crash diagnostics.
+- [ ] Stable and experimental channels.
+
+> Roadmap items are development goals. They are not claims of completed functionality.
 
 ## Building
 
-See the [General Build Guide](docs/Build.md)
+DED SWITCH requires a compatible development environment and the appropriate Android SDK, NDK, CMake and Java toolchain.
 
-For information on provided development tooling, see the [Tools directory](./tools)
+Build instructions will be documented after the Android build configuration has been audited and verified.
 
-## Download
+## Development Status
 
-You can download the latest releases from [our release page](https://git.eden-emu.dev/eden-emu/eden/releases).
+DED SWITCH is under active development.
 
-Save us some bandwidth! We have [mirrors available](./docs/user/ThirdParty.md#mirrors) as well.
+Compatibility, stability, performance and supported devices will be documented only after testing.
+
+No official stable release is currently announced.
+
+## Credits and Upstream Acknowledgements
+
+DED SWITCH builds upon the work of the upstream open-source emulator project and its contributors.
+
+We acknowledge the contributions of the upstream projects and developers whose work makes continued development possible.
+
+Original copyright notices, attribution and applicable license requirements are retained.
 
 ## License
 
-Eden is licensed under the GPLv3 (or any later version). Refer to the [LICENSE.txt](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt) file.
+This project is distributed under the GNU General Public License v3.0 or later, subject to the applicable upstream licensing terms.
 
-## Special thanks
+See [LICENSE](./LICENSE) for details.
 
-Super special thanks to Cloudflare for preventing the git server from blowing up.
+---
 
-- Yuzu
-- Ryujinx
-- Sudachi
-- Citron
-- Torzu
-- Suyu
-- Ryubing
+<div align="center">
 
-And everyone who continues or had contributed to the project! <3
+**DED SWITCH — PROJECT ADRENO BEAST**
+
+*Built for the next level of emulation.*
+
+</div>
