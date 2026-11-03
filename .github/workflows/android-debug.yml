@@ -1,0 +1,60 @@
+name: Android ARM64 debug build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build DED SWITCH (ARM64 debug)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
+            ndk;28.2.13676358
+            cmake;3.31.5
+
+      - name: Verify toolchain
+        run: |
+          java -version
+          cmake --version
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.31.5"
+
+      - name: Build ARM64 debug APK
+        run: |
+          chmod +x .ci/android/build.sh
+          ./.ci/android/build.sh --target standard --build-type Debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ded-switch-android-arm64-debug
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 14
