@@ -9,7 +9,7 @@
 
 <h1 align="center">
   <br>
-  <a href="https://git.eden-emu.dev/eden-emu/eden"><img src="./dist/qt_themes/default/icons/256x256/eden.png" alt="Eden" width="200"></a>
+  <a href="https://git.eden-emu.dev/eden-emu/eden"><img src="./ded-switch-logo.png" alt="DED SWITCH" width="200"></a>
   <br>
   <b>Eden</b>
   <br>
