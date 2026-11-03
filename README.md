@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./ded-switch-logo.png" width="240" alt="DED SWITCH Emulator">
+<img src="./ded-switch-logo-new.png" width="240" alt="DED SWITCH Emulator">
 
 # DED SWITCH
 
