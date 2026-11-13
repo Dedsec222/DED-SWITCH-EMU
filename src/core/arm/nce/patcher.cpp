@@ -98,6 +98,7 @@ bool Patcher::PatchText(std::span<const u8> program_image, const Kernel::CodeSet
     const auto text_words =
         std::span<const u32>{reinterpret_cast<const u32*>(text.data()), text.size() / sizeof(u32)};
 
+    const bool experimental_nce = Settings::values.performance_profile.GetValue() == 0;
     // Loop through instructions, patching as needed.
     for (u32 i = ModuleCodeIndex; i < static_cast<u32>(text_words.size()); i++) {
         const u32 inst = text_words[i];
@@ -131,46 +132,50 @@ bool Patcher::PatchText(std::span<const u8> program_image, const Kernel::CodeSet
             continue;
         }
 
-        // MRS Xn, TPIDR_EL0
-        // MRS Xn, TPIDRRO_EL0
-        if (auto mrs = MRS{inst};
-            mrs.Verify() && (mrs.GetSystemReg() == TpidrroEl0 || mrs.GetSystemReg() == TpidrEl0)) {
-            const auto src_reg = mrs.GetSystemReg() == TpidrroEl0 ? oaknut::SystemReg::TPIDRRO_EL0
-                                                                  : oaknut::SystemReg::TPIDR_EL0;
-            const auto dest_reg = oaknut::XReg{static_cast<int>(mrs.GetRt())};
-            bool pre_buffer = false;
-            auto ret = AddRelocations(pre_buffer);
-            if (pre_buffer) {
-                WriteMrsHandler(ret, dest_reg, src_reg, c_pre);
-            } else {
-                WriteMrsHandler(ret, dest_reg, src_reg, c);
+        // Decode MRS only once per instruction. NX2 programs contain large text
+        // sections; avoiding repeated decoders reduces patch preparation work.
+        // The generated trampolines and their ordering remain unchanged.
+        // Experimental NX2 (Custom profile): reject non-system-register instructions
+        // before constructing/decoding MRS. Normal profiles retain the original path.
+        // ARM64 MRS/MSR system instructions occupy the 0xD5xxxxxx encoding space.
+        if ((!experimental_nce || (inst & 0xFFC00000u) == 0xD5000000u)) {
+        if (auto mrs = MRS{inst}; mrs.Verify()) {
+            const auto reg = mrs.GetSystemReg();
+            if (reg == TpidrroEl0 || reg == TpidrEl0) {
+                const auto src_reg = reg == TpidrroEl0 ? oaknut::SystemReg::TPIDRRO_EL0
+                                                       : oaknut::SystemReg::TPIDR_EL0;
+                const auto dest_reg = oaknut::XReg{static_cast<int>(mrs.GetRt())};
+                bool pre_buffer = false;
+                const auto ret = AddRelocations(pre_buffer);
+                if (pre_buffer) {
+                    WriteMrsHandler(ret, dest_reg, src_reg, c_pre);
+                } else {
+                    WriteMrsHandler(ret, dest_reg, src_reg, c);
+                }
+                continue;
             }
-            continue;
+            if (reg == CntpctEl0 || reg == CntfrqEl0) {
+                bool pre_buffer = false;
+                const auto ret = AddRelocations(pre_buffer);
+                const auto dest_reg = oaknut::XReg{static_cast<int>(mrs.GetRt())};
+                if (reg == CntpctEl0) {
+                    if (pre_buffer) {
+                        WriteCntpctHandler(ret, dest_reg, c_pre);
+                    } else {
+                        WriteCntpctHandler(ret, dest_reg, c);
+                    }
+                } else {
+                    if (pre_buffer) {
+                        WriteCntfrqHandler(ret, dest_reg, c_pre);
+                    } else {
+                        WriteCntfrqHandler(ret, dest_reg, c);
+                    }
+                }
+                continue;
+            }
         }
 
-        // MRS Xn, CNTPCT_EL0
-        if (auto mrs = MRS{inst}; mrs.Verify() && mrs.GetSystemReg() == CntpctEl0) {
-            bool pre_buffer = false;
-            auto ret = AddRelocations(pre_buffer);
-            if (pre_buffer) {
-                WriteCntpctHandler(ret, oaknut::XReg{static_cast<int>(mrs.GetRt())}, c_pre);
-            } else {
-                WriteCntpctHandler(ret, oaknut::XReg{static_cast<int>(mrs.GetRt())}, c);
-            }
-            continue;
-        }
-
-        // MRS Xn, CNTFRQ_EL0
-        if (auto mrs = MRS{inst}; mrs.Verify() && mrs.GetSystemReg() == CntfrqEl0) {
-            bool pre_buffer = false;
-            auto ret = AddRelocations(pre_buffer);
-            if (pre_buffer) {
-                WriteCntfrqHandler(ret, oaknut::XReg{static_cast<int>(mrs.GetRt())}, c_pre);
-            } else {
-                WriteCntfrqHandler(ret, oaknut::XReg{static_cast<int>(mrs.GetRt())}, c);
-            }
-            continue;
-        }
+        } // experimental MRS prefilter
 
         // MSR TPIDR_EL0, Xn
         if (auto msr = MSR{inst}; msr.Verify() && msr.GetSystemReg() == TpidrEl0) {

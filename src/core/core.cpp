@@ -339,13 +339,23 @@ struct System::Impl {
         if (virtual_filesystem != nullptr && Settings::values.cpu_backend.GetValue() == Settings::CpuBackend::Nce) {
             auto loader = Loader::GetLoader(system, GetGameFileFromPath(virtual_filesystem, filepath));
             u64 title{};
-            if (loader && loader->ReadProgramId(title) == Loader::ResultStatus::Success &&
-                Settings::NeedsNx2TranslatedCpu(title, Settings::values.performance_profile.GetValue(), true)) {
+            if (loader && loader->ReadProgramId(title) == Loader::ResultStatus::Success) {
+                // Experimental NX2 NCE: Custom profile (0) explicitly retains the requested
+                // native backend. Other profiles keep the known SIGILL compatibility fallback.
+                // This is an opt-in compatibility test, NOT a second CPU implementation.
+                if (!Settings::NeedsNx2TranslatedCpu(
+                        title, Settings::values.performance_profile.GetValue(), true)) {
+                    LOG_WARNING(Core,
+                                "ALIEN NX2 experimental native CPU: title={:016X}, profile={}, "
+                                "NCE requested; no compatibility override (SIGILL risk)",
+                                title, Settings::values.performance_profile.GetValue());
+                } else {
                 translated_cpu_override = std::pair{Settings::values.cpu_backend.GetValue(),
                                                      Settings::values.cpu_backend.UsingGlobal()};
                 Settings::values.cpu_backend.SetGlobal(false);
                 Settings::values.cpu_backend.SetValue(Settings::CpuBackend::Dynarmic);
                 LOG_WARNING(Core, "NX2 CPU compatibility: {:016X} uses Dynarmic translation after observed NCE SIGILL; Custom mode retains explicit CPU selection", title);
+                }
             }
         }
 #endif

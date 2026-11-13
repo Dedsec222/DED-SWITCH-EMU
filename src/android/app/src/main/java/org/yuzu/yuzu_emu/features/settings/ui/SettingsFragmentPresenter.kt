@@ -463,6 +463,10 @@ class SettingsFragmentPresenter(
     private fun addPerformanceSettings(sl: ArrayList<SettingsItem>) {
         sl.apply {
             add(IntSetting.PERFORMANCE_PROFILE.key)
+            // Experimental NX2 NCE testing: select NCE and Custom profile (0).
+            // Stable/Performance/Alien profiles retain the known-title Dynarmic fallback.
+            add(IntSetting.CPU_BACKEND.key)
+            add(IntSetting.CPU_ACCURACY.key)
             add(BooleanSetting.KERNEL_SVC_TRACE.key)
             add(IntSetting.MEMORY_LAYOUT.key)
             add(IntSetting.RENDERER_RESOLUTION.key)

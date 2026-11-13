@@ -225,6 +225,7 @@ private:
     }
 
     void GetSlotEvent(HLERequestContext& ctx) {
+        const auto hypercore_begin = std::chrono::steady_clock::now();
         const u32 slot = ctx.CommandBuffer()[2];
         LOG_WARNING(Service, "(STUBBED) nx2:syncpt TIPC 22 slot={:#x}, returning an event", slot);
         auto*& event = m_events[slot];
@@ -234,6 +235,14 @@ private:
         IPC::ResponseBuilder rb{ctx, 2, 1, 0};
         rb.Push(ResultSuccess);
         rb.PushCopyObjects(ctx, event->GetReadableEvent());
+        const auto hypercore_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - hypercore_begin).count();
+        // Lightweight ALIEN Hypercore diagnostic: report only unusually slow service calls.
+        // This does not change synchronization or event ownership.
+        if (hypercore_us >= 2000) {
+            LOG_WARNING(Service, "ALIEN Hypercore: nx2:syncpt TIPC22 slot={:#x} latency={}us",
+                        slot, hypercore_us);
+        }
     }
 
     // Map nodes are stable, so a registered action can hold a reference to its request.
