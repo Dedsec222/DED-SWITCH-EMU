@@ -50,7 +50,14 @@ jobs:
       - name: Build ARM64 debug APK
         run: |
           chmod +x .ci/android/build.sh
-          ./.ci/android/build.sh --target standard --build-type Debug
+          set +e
+          set -o pipefail
+          ./.ci/android/build.sh --target standard --build-type Debug 2>&1 | tee /tmp/alien-build.log
+          result=$?
+          echo "========== ALIEN KOTLIN ERRORS =========="
+          grep -nEi -A 4 -B 2 '(^e: |error: |Unresolved reference|Compilation error|\.kt:[0-9]+)' /tmp/alien-build.log | tail -120 || true
+          echo "========== END DIAGNOSTICS =========="
+          exit "$result"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
