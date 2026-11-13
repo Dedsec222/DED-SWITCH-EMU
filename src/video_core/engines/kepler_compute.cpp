@@ -1100,6 +1100,9 @@ std::optional<Texture::TICEntry> KeplerCompute::ComputeImageHandle(u32 offset) c
 // into the output image. Without a frame from this evaluation everything runs natively; if the
 // blit is ever refused, the network runs natively for the rest of the session.
 bool KeplerCompute::ProcessOcarinaMovie(u64 program_id, u64 native_key) {
+    // ALIEN NX2 V3: disable the experimental movie-network shortcut.
+    // Let the original compute path run for crash isolation.
+    return false;
     using namespace VideoCommon::OcarinaMovie;
     static bool failed = false;
     if (program_id != ProgramId || failed) {
