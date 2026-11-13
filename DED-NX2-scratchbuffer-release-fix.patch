@@ -1,0 +1,18 @@
+diff --git a/src/common/scratch_buffer.h b/src/common/scratch_buffer.h
+--- a/src/common/scratch_buffer.h
++++ b/src/common/scratch_buffer.h
+@@ -121,7 +121,14 @@
+     [[nodiscard]] size_type capacity() const noexcept {
+         return buffer_capacity;
+     }
+
++    /// Release the allocated storage and reset the buffer to its empty state.
++    void release() noexcept {
++        buffer.reset();
++        last_requested_size = 0;
++        buffer_capacity = 0;
++    }
++
+     void swap(ScratchBuffer& other) noexcept {
+         std::swap(last_requested_size, other.last_requested_size);
+         std::swap(buffer_capacity, other.buffer_capacity);

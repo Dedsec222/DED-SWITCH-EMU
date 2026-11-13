@@ -50,6 +50,9 @@ extern "C" {
 #include "common/scm_rev.h"
 #include "common/scope_exit.h"
 #include "common/settings.h"
+#include "common/native_fault.h"
+#include "common/apply_performance_profile.h"
+#include "common/performance_profile.h"
 #include "common/string_util.h"
 #include "common/thread.h"
 #include "frontend_common/play_time_manager.h"
@@ -92,6 +95,7 @@ extern "C" {
 #include "hid_core/hid_types.h"
 #include "input_common/drivers/virtual_amiibo.h"
 #include "jni/native.h"
+#include "jni/android_settings.h"
 #include "video_core/frame_gen/lossless_dll.h"
 #include "video_core/renderer_base.h"
 #include "video_core/renderer_vulkan/renderer_vulkan.h"
@@ -259,6 +263,8 @@ void EmulationSession::InitializeSystem(bool reload) {
         Common::Log::Initialize();
         Common::Log::SetColorConsoleBackendEnabled(true);
         Common::Log::Start();
+        Common::InitializeNativeFaultCapture(
+            Common::FS::GetEdenPath(Common::FS::EdenPath::LogDir).string());
 
         m_input_subsystem.Initialize();
     }
@@ -283,6 +289,11 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
                                                                const std::size_t program_index,
                                                                const bool frontend_initiated) {
     std::scoped_lock lock(m_mutex);
+    {
+        std::scoped_lock stop_lock{m_cache_stop_mutex};
+        m_cache_stop_source = std::stop_source{};
+    }
+    m_is_stopping = false;
 
     // Create the render window.
     m_window = std::make_unique<EmuWindow_Android>(m_native_window, m_vulkan_library);
@@ -292,6 +303,9 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
     jauto android_webapplet = std::make_unique<Common::Android::WebBrowser::AndroidWebBrowser>();
     m_software_keyboard = android_keyboard.get();
     m_system.SetShuttingDown(false);
+    Settings::ApplyPerformanceProfile();
+    LOG_INFO(Frontend, "DED performance profile {} applied (0=custom, 1=stable, 2=performance, 3=alien)",
+             Settings::values.performance_profile.GetValue());
     m_system.ApplySettings();
     Settings::LogSettings();
     m_system.HIDCore().ReloadInputDevices();
@@ -356,14 +370,19 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
 }
 
 void EmulationSession::ShutdownEmulation() {
-    std::scoped_lock lock(m_mutex);
-
-    if (m_next_program_index != -1) {
-        ChangeProgram(m_next_program_index);
-        m_next_program_index = -1;
+    HaltEmulation();
+    s32 next_program;
+    {
+        std::scoped_lock lock(m_mutex);
+        m_is_running = false;
+        m_is_paused = false;
+        next_program = m_next_program_index.exchange(-1);
     }
-
-    m_is_running = false;
+    // CPU exit callbacks can request stop while ShutdownMainProcess joins those CPUs.
+    // Never hold the session control mutex across teardown or frontend callbacks.
+    if (next_program != -1) {
+        ChangeProgram(next_program);
+    }
 
     // Unload user input.
     m_system.HIDCore().UnloadInputDevices();
@@ -371,10 +390,12 @@ void EmulationSession::ShutdownEmulation() {
     // Enable all controllers
     m_system.HIDCore().SetSupportedStyleTag({Core::HID::NpadStyleSet::All});
 
+    LOG_INFO(Frontend, "DED shutdown: beginning native process cleanup");
     // Shutdown the main emulated process
     if (m_load_result == Core::SystemResultStatus::Success) {
         m_system.DetachDebugger();
         m_system.ShutdownMainProcess();
+        LOG_INFO(Frontend, "DED shutdown: native process cleanup complete");
         m_load_result = Core::SystemResultStatus::ErrorNotInitialized;
         m_window.reset();
         OnEmulationStopped(Core::SystemResultStatus::Success);
@@ -386,26 +407,43 @@ void EmulationSession::ShutdownEmulation() {
 }
 
 void EmulationSession::PauseEmulation() {
+    if (m_is_stopping || !m_is_running) return;
     std::scoped_lock lock(m_mutex);
+    if (m_is_stopping || !m_is_running) return;
     m_system.Pause();
     m_is_paused = true;
 }
 
 void EmulationSession::UnPauseEmulation() {
+    if (m_is_stopping || !m_is_running) return;
     std::scoped_lock lock(m_mutex);
+    if (m_is_stopping || !m_is_running) return;
     m_system.Run();
     m_is_paused = false;
 }
 
+std::stop_token EmulationSession::CacheStopToken() {
+    std::scoped_lock lock{m_cache_stop_mutex};
+    return m_cache_stop_source.get_token();
+}
+
 void EmulationSession::HaltEmulation() {
-    std::scoped_lock lock(m_mutex);
+    m_is_stopping = true;
     m_is_running = false;
-    m_cv.notify_one();
+    auto source = [this] {
+        std::scoped_lock lock{m_cache_stop_mutex};
+        return m_cache_stop_source;
+    }();
+    source.request_stop();
+    m_cv.notify_all();
 }
 
 void EmulationSession::RunEmulation() {
+    Common::RefreshNativeFaultMappings();
+    const auto cache_stop = CacheStopToken();
     {
         std::scoped_lock lock(m_mutex);
+        if (m_is_stopping || cache_stop.stop_requested()) return;
         m_is_running = true;
     }
 
@@ -413,10 +451,14 @@ void EmulationSession::RunEmulation() {
     if (Settings::values.use_disk_shader_cache.GetValue()) {
         LoadDiskCacheProgress(VideoCore::LoadCallbackStage::Prepare, 0, 0);
         m_system.Renderer().ReadRasterizer()->LoadDiskResources(
-            m_system.GetApplicationProcessProgramID(), std::stop_token{}, LoadDiskCacheProgress);
+            m_system.GetApplicationProcessProgramID(), cache_stop, LoadDiskCacheProgress);
         LoadDiskCacheProgress(VideoCore::LoadCallbackStage::Complete, 0, 0);
     }
 
+    if (m_is_stopping || cache_stop.stop_requested()) {
+        LOG_INFO(Frontend, "Shader cache loading cancelled; guest execution will not start");
+        return;
+    }
     void(m_system.Run());
 
     if (m_system.DebuggerEnabled()) {
@@ -454,7 +496,8 @@ void EmulationSession::RequestDiskShaderCacheReload(u64 program_id) {
 }
 
 void EmulationSession::ReloadDiskShaderCache(u64 program_id) {
-    if (!Settings::values.use_disk_shader_cache.GetValue())
+    const auto cache_stop = CacheStopToken();
+    if (m_is_stopping || cache_stop.stop_requested() || !Settings::values.use_disk_shader_cache.GetValue())
         return;
 
     LOG_INFO(Frontend, "Reloading disk shader cache for {:016X}", program_id);
@@ -466,13 +509,13 @@ void EmulationSession::ReloadDiskShaderCache(u64 program_id) {
     m_system.GPU().ObtainContext();
 
     LoadDiskCacheProgress(VideoCore::LoadCallbackStage::Prepare, 0, 0);
-    m_system.Renderer().ReadRasterizer()->LoadDiskResources(program_id, std::stop_token{},
+    m_system.Renderer().ReadRasterizer()->LoadDiskResources(program_id, cache_stop,
                                                             LoadDiskCacheProgress);
     LoadDiskCacheProgress(VideoCore::LoadCallbackStage::Complete, 0, 0);
 
     m_system.GPU().ReleaseContext();
 
-    if (!was_paused)
+    if (!was_paused && !m_is_stopping && !cache_stop.stop_requested())
         m_system.Run();
 }
 
@@ -519,6 +562,16 @@ u64 EmulationSession::GetProgramId(JNIEnv* env, jstring jprogramId) {
 static Core::SystemResultStatus RunEmulation(const std::string& filepath,
                                              const size_t program_index,
                                              const bool frontend_initiated) {
+    Common::Log::Filter log_filter;
+    log_filter.ParseFilterString(Settings::values.log_filter.GetValue());
+    const bool detailed_trace = AndroidSettings::values.kernel_svc_trace.GetValue();
+    if (detailed_trace || Settings::values.performance_profile.GetValue() != 0) {
+        log_filter.SetClassLevel(Common::Log::Class::Kernel_SVC,
+                                 detailed_trace ? Common::Log::Level::Trace : Common::Log::Level::Info);
+    }
+    Common::Log::SetGlobalFilter(log_filter);
+    LOG_INFO(Frontend, "Applied game-start log filter: {}; preset kernel trace opt-in={}",
+             Settings::values.log_filter.GetValue(), detailed_trace);
     LOG_INFO(Frontend, "starting");
 
     if (filepath.empty()) {
@@ -2335,3 +2388,10 @@ JNIEXPORT jbyteArray JNICALL Java_org_yuzu_yuzu_1emu_NativeLibrary_getDefaultAcc
 }
 
 } // extern "C"
+
+extern "C" JNIEXPORT void JNICALL
+Java_org_yuzu_yuzu_1emu_NativeLibrary_setThermalStatus(JNIEnv*, jobject, jint status) {
+    Settings::thermal_speed_policy.Update(status);
+    LOG_INFO(Frontend, "DED thermal status {} (preset speed cap {}%)", status,
+             Settings::thermal_speed_policy.Limit(100));
+}

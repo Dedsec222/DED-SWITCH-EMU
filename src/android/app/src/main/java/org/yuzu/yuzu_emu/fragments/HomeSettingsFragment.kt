@@ -353,7 +353,21 @@ class HomeSettingsFragment : Fragment() {
             adapter = HomeSettingAdapter(
                 requireActivity() as AppCompatActivity,
                 viewLifecycleOwner,
-                optionsList
+                optionsList.filterNot {
+                    it.titleId in setOf(
+                        R.string.applets, R.string.multiplayer, R.string.lossless_scaling,
+                        R.string.post_processing
+                    )
+                }.map {
+                    if (it.titleId == R.string.advanced_settings) {
+                        it.copy(
+                            titleId = R.string.ded_nx2_settings,
+                            descriptionId = R.string.ded_nx2_settings_description
+                        )
+                    } else {
+                        it
+                    }
+                }
             )
             val spacing = resources.getDimensionPixelSize(R.dimen.spacing_small)
             addItemDecoration(SpacingItemDecoration(spacing))

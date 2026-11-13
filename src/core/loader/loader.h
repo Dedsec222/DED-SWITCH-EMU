@@ -47,6 +47,7 @@ enum class FileType {
     XCZ,
     NAX,
     KIP,
+    NUP,
     DeconstructedRomDirectory,
 };
 
@@ -326,6 +327,8 @@ public:
     virtual ResultStatus ReadControlData(FileSys::NACP& control) {
         return ResultStatus::ErrorNotImplemented;
     }
+
+    virtual ResultStatus ReadDisplayVersion(std::string& version);
 
     /**
      * Get the RomFS of the manual of the application

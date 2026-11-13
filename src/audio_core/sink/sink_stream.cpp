@@ -82,6 +82,19 @@ void SinkStream::AppendBuffer(SinkBuffer& buffer, std::span<s16> samples) {
     ++queued_buffers;
 }
 
+bool SinkStream::TryAppendOutputBlock(SinkBuffer& buffer, std::span<s16> samples) {
+    if (type != StreamType::Sysmix || !IsReady() ||
+        buffer.frames != TargetSampleCount || buffer.frames_played != 0 ||
+        buffer.consumed || system_channels != 2 ||
+        (device_channels != 2 && device_channels != 6) ||
+        samples.size() != TargetSampleCount * system_channels ||
+        queued_buffers.load() >= 3) {
+        return false;
+    }
+    AppendBuffer(buffer, samples);
+    return true;
+}
+
 std::vector<s16> SinkStream::ReleaseBuffer(u64 num_samples) {
     auto samples{samples_buffer.Pop(num_samples)};
 

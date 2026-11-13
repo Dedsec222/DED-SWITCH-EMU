@@ -9,6 +9,7 @@ package org.yuzu.yuzu_emu.features.settings.model
 import org.yuzu.yuzu_emu.utils.NativeConfig
 
 enum class IntSetting(override val key: String) : AbstractIntSetting {
+    PERFORMANCE_PROFILE("performance_profile"),
     CPU_BACKEND("cpu_backend"),
     CPU_ACCURACY("cpu_accuracy"),
     REGION_INDEX("region_index"),

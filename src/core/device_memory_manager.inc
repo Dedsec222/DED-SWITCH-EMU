@@ -659,4 +659,38 @@ void DeviceMemoryManager<Traits>::UpdatePagesCachedBatch(std::span<const std::pa
     }
 }
 
+template <typename Traits>
+void DeviceMemoryManager<Traits>::ArmReadTraps(DAddr addr, size_t size) {
+    const auto mark_region_read_trap =
+        &DeviceMemoryManager<Traits>::DeviceMethods::MarkRegionReadTrap;
+    Memory::Memory* run_interface = nullptr;
+    u64 run_begin = 0;
+    u64 run_pages = 0;
+    const auto release_run = [&] {
+        if (run_pages != 0 && run_interface != nullptr) {
+            mark_region_read_trap(run_interface, run_begin << Memory::YUZU_PAGEBITS,
+                                  run_pages << Memory::YUZU_PAGEBITS);
+        }
+        run_pages = 0;
+    };
+
+    const size_t page_end = Common::DivCeil(addr + size, Memory::YUZU_PAGESIZE);
+    for (size_t page = addr >> Memory::YUZU_PAGEBITS; page != page_end; ++page) {
+        const auto [asid, vaddr] = ExtractCPUBacking(page);
+        const u64 virtual_page = vaddr >> Memory::YUZU_PAGEBITS;
+        if (virtual_page == 0) {
+            release_run();
+            continue;
+        }
+        Memory::Memory* const interface = registered_processes[asid.id];
+        if (interface != run_interface || virtual_page != run_begin + run_pages) {
+            release_run();
+            run_interface = interface;
+            run_begin = virtual_page;
+        }
+        ++run_pages;
+    }
+    release_run();
+}
+
 } // namespace Core

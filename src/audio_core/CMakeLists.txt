@@ -47,6 +47,8 @@ add_library(audio_core STATIC
     in/audio_in_system.h
     opus/hardware_opus.cpp
     opus/hardware_opus.h
+    opus/batch_decoder.cpp
+    opus/batch_decoder.h
     opus/decoder_manager.cpp
     opus/decoder_manager.h
     opus/decoder.cpp

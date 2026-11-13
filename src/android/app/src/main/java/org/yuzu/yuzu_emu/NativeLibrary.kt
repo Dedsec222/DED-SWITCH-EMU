@@ -34,6 +34,8 @@ import org.yuzu.yuzu_emu.applets.web.WebBrowser
  * with the native side of the Yuzu code.
  */
 object NativeLibrary {
+    external fun setThermalStatus(status: Int)
+
     @Keep
     data class UpdateResult(
         var tag: String = "",

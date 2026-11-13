@@ -23,6 +23,7 @@ import org.yuzu.yuzu_emu.utils.DirectoryInitialization
 import org.yuzu.yuzu_emu.utils.DocumentsTree
 import org.yuzu.yuzu_emu.utils.GpuDriverHelper
 import org.yuzu.yuzu_emu.utils.Log
+import org.yuzu.yuzu_emu.utils.ProcessExitDiagnostics
 import org.yuzu.yuzu_emu.utils.PowerStateUpdater
 import org.yuzu.yuzu_emu.utils.ControllerNavigationGlobalHook
 import java.util.Locale
@@ -71,6 +72,7 @@ class YuzuApplication : Application() {
         GpuDriverHelper.initializeDriverParameters()
         NativeInput.reloadInputDevices()
         NativeLibrary.logDeviceInfo()
+        ProcessExitDiagnostics.record(this)
         PowerStateUpdater.start()
         Log.logDeviceInfo()
         ControllerNavigationGlobalHook.install(this)

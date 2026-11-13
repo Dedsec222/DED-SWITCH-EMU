@@ -302,6 +302,15 @@ abstract class SettingsItem(
             )
             put(
                 SingleChoiceSetting(
+                    IntSetting.PERFORMANCE_PROFILE,
+                    titleId = R.string.ded_profile,
+                    descriptionId = R.string.ded_profile_description,
+                    choicesId = R.array.dedProfileNames,
+                    valuesId = R.array.dedProfileValues
+                )
+            )
+            put(
+                SingleChoiceSetting(
                     IntSetting.MEMORY_LAYOUT,
                     titleId = R.string.memory_layout,
                     descriptionId = R.string.memory_layout_description,
@@ -643,7 +652,7 @@ abstract class SettingsItem(
                     IntSetting.ANDROID_PIPELINE_WORKERS,
                     titleId = R.string.pipeline_worker_cores,
                     descriptionId = R.string.pipeline_worker_cores_description,
-                    min = 2,
+                    min = 1,
                     max = 8,
                     units = "cores"
                 )
@@ -744,6 +753,20 @@ abstract class SettingsItem(
                     BooleanSetting.RENDERER_FORCE_MAX_CLOCK,
                     titleId = R.string.renderer_force_max_clock,
                     descriptionId = R.string.renderer_force_max_clock_description
+                )
+            )
+            put(
+                SwitchSetting(
+                    BooleanSetting.KERNEL_SVC_TRACE,
+                    titleId = R.string.ded_kernel_trace,
+                    descriptionId = R.string.ded_kernel_trace_description
+                )
+            )
+            put(
+                SwitchSetting(
+                    BooleanSetting.NX2_GPU_THREAD_SPLIT,
+                    titleId = R.string.ded_nx2_split,
+                    descriptionId = R.string.ded_nx2_split_description
                 )
             )
             put(

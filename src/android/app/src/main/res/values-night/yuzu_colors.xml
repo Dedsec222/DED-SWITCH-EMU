@@ -229,21 +229,21 @@
     <!-- Eden Theme Colors -->
 
     <!-- Synthwave/Vaporwave Primary Colors -->
-    <color name="eden_primary">#FF0080</color> <!-- Neon magenta -->
-    <color name="eden_primary_variant">#E6006B</color> <!-- Darker magenta -->
-    <color name="eden_secondary">#00FFFF</color> <!-- Electric cyan -->
-    <color name="eden_secondary_variant">#00E6E6</color> <!-- Darker cyan -->
+    <color name="eden_primary">#FF304F</color> <!-- Neon magenta -->
+    <color name="eden_primary_variant">#44202A</color> <!-- Darker magenta -->
+    <color name="eden_secondary">#8ACBFF</color> <!-- Electric cyan -->
+    <color name="eden_secondary_variant">#152D40</color> <!-- Darker cyan -->
 
     <!-- Background Colors - Deep space black -->
-    <color name="eden_background">#000000</color> <!-- Pure black background -->
-    <color name="eden_surface">#0D0D0D</color> <!-- Card surface -->
-    <color name="eden_surface_variant">#1A1A1A</color> <!-- Elevated surface -->
+    <color name="eden_background">#080A10</color> <!-- Pure black background -->
+    <color name="eden_surface">#10141D</color> <!-- Card surface -->
+    <color name="eden_surface_variant">#191F2C</color> <!-- Elevated surface -->
 
     <!-- Text Colors - High contrast for readability -->
-    <color name="eden_on_background">#FFFFFF</color> <!-- Pure white text -->
-    <color name="eden_on_surface">#FFFFFF</color> <!-- Pure white text -->
+    <color name="eden_on_background">#F4F6FB</color> <!-- Pure white text -->
+    <color name="eden_on_surface">#E7ECF5</color> <!-- Pure white text -->
     <color name="eden_on_primary">#FFFFFF</color> <!-- White on neon -->
-    <color name="eden_on_secondary">#000000</color> <!-- Black on cyan -->
+    <color name="eden_on_secondary">#06131F</color> <!-- Black on cyan -->
 
     <!-- Synthwave Status Colors -->
     <color name="eden_error">#FF0040</color> <!-- Neon red -->
@@ -252,8 +252,8 @@
     <color name="eden_info">#0080FF</color> <!-- Electric blue -->
 
     <!-- Synthwave Accent Colors -->
-    <color name="eden_accent_purple">#9D00FF</color> <!-- Electric purple -->
-    <color name="eden_accent_blue">#0080FF</color> <!-- Electric blue -->
+    <color name="eden_accent_purple">#FF647D</color> <!-- Electric purple -->
+    <color name="eden_accent_blue">#14354A</color> <!-- Electric blue -->
     <color name="eden_accent_orange">#FF8000</color> <!-- Neon orange -->
 
     <!-- Neon Glow Effects -->
@@ -262,8 +262,8 @@
     <color name="eden_glow_orange">#80FF8000</color> <!-- Orange glow -->
 
     <!-- Neon Border Colors -->
-    <color name="eden_border">#7c757f</color> <!-- Subtle border -->
-    <color name="eden_border_light">#948b98</color> <!-- Lighter border -->
+    <color name="eden_border">#343C4E</color> <!-- Subtle border -->
+    <color name="eden_border_light">#424C60</color> <!-- Lighter border -->
     <color name="eden_border_gradient_start">#FF0080</color> <!-- Neon magenta -->
     <color name="eden_border_gradient_end">#60D1F6</color> <!-- Electric cyan -->
 

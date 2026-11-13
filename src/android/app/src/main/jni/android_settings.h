@@ -34,6 +34,8 @@ namespace AndroidSettings {
         std::vector<GameDir> game_dirs;
 
         // Android
+        Settings::SwitchableSetting<bool> kernel_svc_trace{linkage, false, "kernel_svc_trace",
+                                                           Settings::Category::Android};
         Settings::Setting<bool> picture_in_picture{linkage, false, "picture_in_picture",
                                                    Settings::Category::Android};
         Settings::Setting<s32> screen_layout{linkage,

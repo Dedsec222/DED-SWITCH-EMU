@@ -121,6 +121,10 @@ add_library(
     swap.h
     thread.cpp
     thread.h
+    thread_cpu_clock.cpp
+    thread_cpu_clock.h
+    dkb_cpu_trace.cpp
+    dkb_cpu_trace.h
     adpf.cpp
     adpf.h
     thread_queue_list.h
@@ -165,6 +169,7 @@ if(NOT WIN32)
 endif()
 
 if(ANDROID)
+    target_sources(common PRIVATE native_fault.cpp native_fault.h)
     target_sources(
         common
         PUBLIC fs/fs_android.cpp

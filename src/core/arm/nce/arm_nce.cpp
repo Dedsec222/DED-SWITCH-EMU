@@ -8,6 +8,9 @@
 #include <memory>
 
 #include "common/signal_chain.h"
+#ifdef __ANDROID__
+#include "common/native_fault.h"
+#endif
 #include "core/arm/nce/arm_nce.h"
 #include "core/arm/nce/interpreter_visitor.h"
 #include "core/arm/nce/patcher.h"
@@ -26,6 +29,7 @@ namespace {
 
 struct sigaction g_orig_bus_action;
 struct sigaction g_orig_segv_action;
+struct sigaction g_orig_ill_action;
 
 // Verify assembly offsets.
 using NativeExecutionParameters = Kernel::KThread::NativeExecutionParameters;
@@ -174,12 +178,40 @@ bool ArmNce::HandleGuestAccessFault(GuestContext* guest_ctx, void* raw_info, voi
     return HandleFailedGuestFault(guest_ctx, raw_info, raw_context);
 }
 
+bool ArmNce::HandleGuestIllegalInstruction(GuestContext* guest_ctx, void*, void* raw_context) {
+    auto& host_ctx = static_cast<ucontext_t*>(raw_context)->uc_mcontext;
+    // SIGILL identifies an instruction fetched from guest executable memory. Do not skip it.
+    guest_ctx->parent->m_illegal_pc = host_ctx.pc;
+    guest_ctx->parent->m_illegal_opcode = *reinterpret_cast<const volatile u32*>(host_ctx.pc);
+    guest_ctx->esr_el1.fetch_or(static_cast<u64>(HaltReason::IllegalInstruction));
+    auto& params = guest_ctx->parent->m_running_thread->GetNativeExecutionParameters();
+    params.lock.store(SpinLockLocked);
+    SaveGuestContext(guest_ctx, raw_context);
+    return false;
+}
+
+void ArmNce::HandleHostIllegalInstruction(int sig, void* raw_info, void* raw_context) {
+    Common::ForwardSignal(sig, static_cast<siginfo_t*>(raw_info), raw_context, g_orig_ill_action);
+}
+
 void ArmNce::HandleHostAlignmentFault(int sig, void* raw_info, void* raw_context) {
-    return g_orig_bus_action.sa_sigaction(sig, static_cast<siginfo_t*>(raw_info), raw_context);
+#ifdef __ANDROID__
+    const auto sequence = Common::BeginNativeFault(sig, static_cast<siginfo_t*>(raw_info), raw_context);
+#endif
+    Common::ForwardSignal(sig, static_cast<siginfo_t*>(raw_info), raw_context, g_orig_bus_action);
+#ifdef __ANDROID__
+    Common::EndNativeFault(sequence);
+#endif
 }
 
 void ArmNce::HandleHostAccessFault(int sig, void* raw_info, void* raw_context) {
-    return g_orig_segv_action.sa_sigaction(sig, static_cast<siginfo_t*>(raw_info), raw_context);
+#ifdef __ANDROID__
+    const auto sequence = Common::BeginNativeFault(sig, static_cast<siginfo_t*>(raw_info), raw_context);
+#endif
+    Common::ForwardSignal(sig, static_cast<siginfo_t*>(raw_info), raw_context, g_orig_segv_action);
+#ifdef __ANDROID__
+    Common::EndNativeFault(sequence);
+#endif
 }
 
 void ArmNce::LockThread(Kernel::KThread* thread) {
@@ -245,6 +277,9 @@ HaltReason ArmNce::RunThread(Kernel::KThread* thread) {
     // Non-critical updates can happen after releasing the thread
     m_guest_ctx.tpidr_el0 = final_tpidr_el0;
 
+    if (True(hr & HaltReason::IllegalInstruction)) {
+        LOG_ERROR(Core_ARM, "NCE guest SIGILL: pc={:#x}, opcode={:#010x}; returning to host for clean stop", m_illegal_pc, m_illegal_opcode);
+    }
     // Return the halt reason.
     return hr;
 }
@@ -302,6 +337,7 @@ void ArmNce::Initialize() {
         sigaddset(&signal_mask, BreakFromRunCodeSignal);
         sigaddset(&signal_mask, GuestAlignmentFaultSignal);
         sigaddset(&signal_mask, GuestAccessFaultSignal);
+        sigaddset(&signal_mask, GuestIllegalInstructionSignal);
 
         struct sigaction return_to_run_code_action {};
         return_to_run_code_action.sa_flags = SA_SIGINFO | SA_ONSTACK;
@@ -323,7 +359,7 @@ void ArmNce::Initialize() {
         alignment_fault_action.sa_sigaction =
             reinterpret_cast<HandlerType>(&ArmNce::GuestAlignmentFaultSignalHandler);
         alignment_fault_action.sa_mask = signal_mask;
-        Common::SigAction(GuestAlignmentFaultSignal, &alignment_fault_action, nullptr);
+        Common::SigAction(GuestAlignmentFaultSignal, &alignment_fault_action, &g_orig_bus_action);
 
         struct sigaction access_fault_action {};
         access_fault_action.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESTART;
@@ -331,6 +367,12 @@ void ArmNce::Initialize() {
             reinterpret_cast<HandlerType>(&ArmNce::GuestAccessFaultSignalHandler);
         access_fault_action.sa_mask = signal_mask;
         Common::SigAction(GuestAccessFaultSignal, &access_fault_action, &g_orig_segv_action);
+
+        struct sigaction illegal_action{};
+        illegal_action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+        illegal_action.sa_sigaction = reinterpret_cast<HandlerType>(&ArmNce::GuestIllegalInstructionSignalHandler);
+        illegal_action.sa_mask = signal_mask;
+        Common::SigAction(GuestIllegalInstructionSignal, &illegal_action, &g_orig_ill_action);
     });
 }
 

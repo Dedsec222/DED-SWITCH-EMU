@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 
+#include "common/settings.h"
 #include "core/core.h"
 #include "core/hle/kernel/k_process.h"
 #include "core/hle/kernel/svc.h"
@@ -18,7 +19,13 @@ Result SetHeapSize(Core::System& system, u64* out_address, u64 size) {
 
     // Validate size.
     R_UNLESS(Common::IsAligned(size, HeapSizeAlignment), ResultInvalidSize);
-    R_UNLESS(size < MainMemorySizeMax, ResultInvalidSize);
+    const auto& process = GetCurrentProcess(system.Kernel());
+    const auto memory_layout = Settings::values.memory_layout_mode.GetValue();
+    const u64 heap_size_limit =
+        process.IsSwitch2() || memory_layout == Settings::MemoryLayout::Memory_12Gb
+            ? 12_GiB
+            : memory_layout == Settings::MemoryLayout::Memory_10Gb ? 10_GiB : MainMemorySizeMax;
+    R_UNLESS(size < heap_size_limit, ResultInvalidSize);
 
     // Set the heap size.
     KProcessAddress address{};

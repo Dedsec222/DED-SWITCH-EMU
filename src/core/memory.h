@@ -200,6 +200,7 @@ public:
      * @returns the read 32-bit unsigned value.
      */
     u32 Read32(Common::ProcessAddress addr);
+    bool Read32Acquire(Common::ProcessAddress addr, u32& value);
 
     /**
      * Reads a 64-bit unsigned value from the current process' address space
@@ -482,6 +483,11 @@ public:
      *               marked as cached or uncached.
      */
     void RasterizerMarkRegionCached(Common::ProcessAddress vaddr, u64 size, bool cached);
+
+    /**
+     * Makes the next guest read of each rasterizer-cached page in the range take the slow path.
+     */
+    void RasterizerArmReadTraps(Common::ProcessAddress vaddr, u64 size);
 
     /**
      * Marks each page within the specified address range as debug or non-debug.

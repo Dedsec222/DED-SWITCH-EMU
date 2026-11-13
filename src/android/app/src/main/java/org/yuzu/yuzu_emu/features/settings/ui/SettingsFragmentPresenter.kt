@@ -169,6 +169,7 @@ class SettingsFragmentPresenter(
         val sl = ArrayList<SettingsItem>()
         when (menuTag) {
             MenuTag.SECTION_ROOT -> addConfigSettings(sl)
+            MenuTag.SECTION_PERFORMANCE -> addPerformanceSettings(sl)
             MenuTag.SECTION_SYSTEM -> addSystemSettings(sl)
             MenuTag.SECTION_RENDERER -> addGraphicsSettings(sl)
             MenuTag.SECTION_FRAME_GEN -> addFrameGenSettings(sl)
@@ -405,127 +406,102 @@ class SettingsFragmentPresenter(
 
     private fun addConfigSettings(sl: ArrayList<SettingsItem>) {
         sl.apply {
-            add(
-                SubmenuSetting(
-                    titleId = R.string.preferences_system,
-                    descriptionId = R.string.preferences_system_description,
-                    iconId = R.drawable.ic_system_settings,
-                    menuKey = MenuTag.SECTION_SYSTEM
-                )
-            )
-            add(
-                SubmenuSetting(
-                    titleId = R.string.preferences_graphics,
-                    descriptionId = R.string.preferences_graphics_description,
-                    iconId = R.drawable.ic_graphics,
-                    menuKey = MenuTag.SECTION_RENDERER
-                )
-            )
+            add(HeaderSetting(R.string.ded_nx2_experimental))
+            add(SubmenuSetting(
+                titleId = R.string.ded_performance,
+                descriptionId = R.string.ded_performance_description,
+                iconId = R.drawable.ic_frames,
+                menuKey = MenuTag.SECTION_PERFORMANCE
+            ))
+            add(SubmenuSetting(
+                titleId = R.string.ded_nx2_cpu,
+                descriptionId = R.string.ded_nx2_cpu_description,
+                iconId = R.drawable.ic_code,
+                menuKey = MenuTag.SECTION_DEBUG
+            ))
+            add(SubmenuSetting(
+                titleId = R.string.ded_nx2_gpu,
+                descriptionId = R.string.ded_nx2_gpu_description,
+                iconId = R.drawable.ic_graphics,
+                menuKey = MenuTag.SECTION_RENDERER
+            ))
+            add(SubmenuSetting(
+                titleId = R.string.ded_nx2_system,
+                descriptionId = R.string.ded_nx2_system_description,
+                iconId = R.drawable.ic_system_settings,
+                menuKey = MenuTag.SECTION_SYSTEM
+            ))
+            add(SubmenuSetting(
+                titleId = R.string.preferences_audio,
+                descriptionId = R.string.preferences_audio_description,
+                iconId = R.drawable.ic_audio,
+                menuKey = MenuTag.SECTION_AUDIO
+            ))
             if (!NativeConfig.isPerGameConfigLoaded()) {
-                add(
-                    SubmenuSetting(
-                        titleId = R.string.stats_overlay_options,
-                        descriptionId = R.string.stats_overlay_options_description,
-                        iconId = R.drawable.ic_frames,
-                        menuKey = MenuTag.SECTION_PERFORMANCE_STATS
-                    )
-                )
+                add(SubmenuSetting(
+                    titleId = R.string.stats_overlay_options,
+                    descriptionId = R.string.stats_overlay_options_description,
+                    iconId = R.drawable.ic_frames,
+                    menuKey = MenuTag.SECTION_PERFORMANCE_STATS
+                ))
+                add(SubmenuSetting(
+                    titleId = R.string.soc_overlay_options,
+                    descriptionId = R.string.soc_overlay_options_description,
+                    iconId = R.drawable.ic_system,
+                    menuKey = MenuTag.SECTION_SOC_OVERLAY
+                ))
+            }
+            add(RunnableSetting(
+                titleId = R.string.reset_to_default,
+                descriptionId = R.string.reset_to_default_description,
+                isRunnable = !NativeLibrary.isRunning(),
+                iconId = R.drawable.ic_restore
+            ) { settingsViewModel.setShouldShowResetSettingsDialog(true) })
+        }
+    }
 
-                add(
-                    SubmenuSetting(
-                        titleId = R.string.soc_overlay_options,
-                        descriptionId = R.string.soc_overlay_options_description,
-                        iconId = R.drawable.ic_system,
-                        menuKey = MenuTag.SECTION_SOC_OVERLAY
-                    )
-                )
-                add(
-                    SubmenuSetting(
-                        titleId = R.string.input_overlay_options,
-                        iconId = R.drawable.ic_controller,
-                        descriptionId = R.string.input_overlay_options_description,
-                        menuKey = MenuTag.SECTION_INPUT_OVERLAY
-                    )
-                )
-            }
-            add(
-                SubmenuSetting(
-                    titleId = R.string.preferences_audio,
-                    descriptionId = R.string.preferences_audio_description,
-                    iconId = R.drawable.ic_audio,
-                    menuKey = MenuTag.SECTION_AUDIO
-                )
-            )
-            add(
-                SubmenuSetting(
-                    titleId = R.string.preferences_debug,
-                    descriptionId = R.string.preferences_debug_description,
-                    iconId = R.drawable.ic_code,
-                    menuKey = MenuTag.SECTION_DEBUG
-                )
-            )
-            add(
-                SubmenuSetting(
-                    titleId = R.string.applets_menu,
-                    descriptionId = R.string.applets_menu_description,
-                    iconId = R.drawable.ic_applet,
-                    menuKey = MenuTag.SECTION_APPLETS
-                )
-            )
-            if (!NativeConfig.isPerGameConfigLoaded()) {
-                add(
-                    SubmenuSetting(
-                        titleId = R.string.preferences_custom_paths,
-                        descriptionId = R.string.preferences_custom_paths_description,
-                        iconId = R.drawable.ic_folder_open,
-                        menuKey = MenuTag.SECTION_CUSTOM_PATHS
-                    )
-                )
-            }
-            add(
-                RunnableSetting(
-                    titleId = R.string.reset_to_default,
-                    descriptionId = R.string.reset_to_default_description,
-                    isRunnable = !NativeLibrary.isRunning(),
-                    iconId = R.drawable.ic_restore
-                ) { settingsViewModel.setShouldShowResetSettingsDialog(true) }
-            )
+    private fun addPerformanceSettings(sl: ArrayList<SettingsItem>) {
+        sl.apply {
+            add(IntSetting.PERFORMANCE_PROFILE.key)
+            add(BooleanSetting.KERNEL_SVC_TRACE.key)
+            add(IntSetting.MEMORY_LAYOUT.key)
+            add(IntSetting.RENDERER_RESOLUTION.key)
+            add(IntSetting.ANDROID_PIPELINE_WORKERS.key)
+            add(HeaderSetting(R.string.ded_thermal_description))
+            add(SubmenuSetting(
+                titleId = R.string.ded_nx2_gpu,
+                descriptionId = R.string.ded_nx2_gpu_description,
+                iconId = R.drawable.ic_graphics,
+                menuKey = MenuTag.SECTION_RENDERER
+            ))
         }
     }
 
     private fun addSystemSettings(sl: ArrayList<SettingsItem>) {
         sl.apply {
             add(StringSetting.DEVICE_NAME.key)
+            add(IntSetting.MEMORY_LAYOUT.key)
             add(BooleanSetting.RENDERER_USE_SPEED_LIMIT.key)
             add(ShortSetting.RENDERER_SPEED_LIMIT.key)
-            add(ShortSetting.RENDERER_TURBO_SPEED_LIMIT.key)
-            add(ShortSetting.RENDERER_SLOW_SPEED_LIMIT.key)
-            add(BooleanSetting.USE_DOCKED_MODE.key)
             add(IntSetting.REGION_INDEX.key)
             add(IntSetting.LANGUAGE_INDEX.key)
             add(BooleanSetting.USE_CUSTOM_RTC.key)
             add(LongSetting.CUSTOM_RTC.key)
-
-            add(HeaderSetting(R.string.clocks))
-            add(IntSetting.FAST_CPU_TIME.key)
-            add(IntSetting.FAST_GPU_TIME.key)
-            add(BooleanSetting.CORE_SYNC_CORE_SPEED.key)
-
-            add(IntSetting.MEMORY_LAYOUT.key)
-            add(BooleanSetting.USE_CUSTOM_CPU_TICKS.key)
-            add(IntSetting.CPU_TICKS.key)
-
-            if (!NativeConfig.isPerGameConfigLoaded()) {
-                add(HeaderSetting(R.string.network))
-                add(StringSetting.WEB_TOKEN.key)
-                add(StringSetting.WEB_USERNAME.key)
-            }
         }
     }
 
-    // TODO(crueter): sub-submenus?
     private fun addGraphicsSettings(sl: ArrayList<SettingsItem>) {
         sl.apply {
+            add(HeaderSetting(R.string.ded_nx2_gpu))
+            add(BooleanSetting.NX2_GPU_THREAD_SPLIT.key)
+            add(IntSetting.RENDERER_ACCURACY.key)
+            add(IntSetting.DMA_ACCURACY.key)
+            add(BooleanSetting.RENDERER_ASYNCHRONOUS_GPU_EMULATION.key)
+            add(HeaderSetting(R.string.ded_nx2_shaders))
+            add(BooleanSetting.RENDERER_USE_DISK_SHADER_CACHE.key)
+            add(BooleanSetting.RENDERER_ASYNCHRONOUS_SHADERS.key)
+            add(IntSetting.ANDROID_PIPELINE_WORKERS.key)
+            add(HeaderSetting(R.string.display))
             add(IntSetting.RENDERER_RESOLUTION.key)
             add(IntSetting.RENDERER_VSYNC.key)
             add(IntSetting.RENDERER_SCALING_FILTER.key)
@@ -533,46 +509,11 @@ class SettingsFragmentPresenter(
                 add(IntSetting.FSR_SHARPENING_SLIDER.key)
             }
             add(IntSetting.RENDERER_ANTI_ALIASING.key)
-
-            add(HeaderSetting(R.string.advanced))
-
-            add(IntSetting.RENDERER_ACCURACY.key)
-            add(IntSetting.DMA_ACCURACY.key)
-            add(IntSetting.GPU_FENCE_BEHAVIOR.key)
             add(IntSetting.MAX_ANISOTROPY.key)
             add(IntSetting.RENDERER_VRAM_USAGE_MODE.key)
             add(IntSetting.RENDERER_ASTC_DECODE_METHOD.key)
             add(IntSetting.RENDERER_NVDEC_EMULATION.key)
-
-            add(BooleanSetting.SYNC_MEMORY_OPERATIONS.key)
-            add(BooleanSetting.RENDERER_USE_DISK_SHADER_CACHE.key)
-            add(BooleanSetting.RENDERER_FORCE_MAX_CLOCK.key)
-            add(BooleanSetting.RENDERER_REACTIVE_FLUSHING.key)
-            add(BooleanSetting.ENABLE_BUFFER_HISTORY.key)
-            add(BooleanSetting.USE_OPTIMIZED_VERTEX_BUFFERS.key)
-
-            add(HeaderSetting(R.string.hacks))
-
-            add(BooleanSetting.SKIP_CPU_INNER_INVALIDATION.key)
-            add(BooleanSetting.FIX_BLOOM_EFFECTS.key)
-            add(BooleanSetting.EMULATE_BGR565.key)
-            add(BooleanSetting.RENDERER_ASYNCHRONOUS_SHADERS.key)
-            add(IntSetting.ANDROID_PIPELINE_WORKERS.key)
-            add(BooleanSetting.RENDERER_ASYNCHRONOUS_GPU_EMULATION.key)
-            add(SettingsItem.GPU_UNSWIZZLE_COMBINED)
-
-            add(HeaderSetting(R.string.extensions))
-
-            add(IntSetting.RENDERER_DYNA_STATE.key)
-            add(BooleanSetting.RENDERER_VERTEX_INPUT_DYNAMIC_STATE.key)
-            add(IntSetting.RENDERER_SAMPLE_SHADING.key)
-
-            add(HeaderSetting(R.string.display))
-
-            add(IntSetting.RENDERER_SCREEN_LAYOUT.key)
             add(IntSetting.RENDERER_ASPECT_RATIO.key)
-            add(IntSetting.VERTICAL_ALIGNMENT.key)
-            add(BooleanSetting.PICTURE_IN_PICTURE.key)
         }
     }
 
@@ -1506,53 +1447,19 @@ class SettingsFragmentPresenter(
 
             add(HeaderSetting(R.string.buttons))
             add(BooleanSetting.ENABLE_FOLDER_BUTTON.key)
-            add(BooleanSetting.ENABLE_QLAUNCH_BUTTON.key)
-            if (!NativeLibrary.isFirmwareAvailable()) {
-                BooleanSetting.ENABLE_QLAUNCH_BUTTON.setBoolean(false)
-            }
         }
     }
 
     private fun addDebugSettings(sl: ArrayList<SettingsItem>) {
         sl.apply {
-            add(HeaderSetting(R.string.gpu))
-
-            add(IntSetting.RENDERER_BACKEND.key)
-            add(BooleanSetting.RENDERER_DEBUG.key)
-            add(BooleanSetting.RENDERER_PATCH_OLD_QCOM_DRIVERS.key)
-            add(BooleanSetting.BUFFER_REORDER_DISABLE.key)
-
-            add(HeaderSetting(R.string.cpu))
-
+            add(HeaderSetting(R.string.ded_nx2_cpu))
             add(IntSetting.CPU_BACKEND.key)
             add(IntSetting.CPU_ACCURACY.key)
-            add(BooleanSetting.USE_AUTO_STUB.key)
             add(SettingsItem.FASTMEM_COMBINED)
-            add(BooleanSetting.CPUOPT_UNSAFE_HOST_MMU.key)
-
             if (!NativeConfig.isPerGameConfigLoaded()) {
                 add(HeaderSetting(R.string.log))
-
-                add(BooleanSetting.DEBUG_FLUSH_BY_LINE.key)
                 add(BooleanSetting.EXTENDED_LOGGING.key)
                 add(StringSetting.LOG_FILTER.key)
-            }
-
-            add(HeaderSetting(R.string.general))
-
-            add(UShortSetting.DEBUG_KNOBS.key)
-            add(StringSetting.PROGRAM_ARGS.key)
-
-            if (!NativeConfig.isPerGameConfigLoaded()) {
-                add(HeaderSetting(R.string.gpu_logging_header))
-                add(ByteSetting.GPU_LOG_LEVEL.key)
-                add(BooleanSetting.GPU_LOG_VULKAN_CALLS.key)
-                add(BooleanSetting.DUMP_GUEST_SHADERS.key)
-                add(BooleanSetting.GPU_LOG_SHADER_DUMPS.key)
-                add(BooleanSetting.DUMP_MACROS.key)
-                add(BooleanSetting.GPU_LOG_MEMORY_TRACKING.key)
-                add(BooleanSetting.GPU_LOG_DRIVER_DEBUG.key)
-                add(IntSetting.GPU_LOG_RING_BUFFER_SIZE.key)
             }
         }
     }

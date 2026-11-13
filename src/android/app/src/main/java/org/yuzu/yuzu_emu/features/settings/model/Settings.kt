@@ -8,9 +8,10 @@ import org.yuzu.yuzu_emu.YuzuApplication
 
 object Settings {
     enum class MenuTag(val titleId: Int = 0) {
-        SECTION_ROOT(R.string.advanced_settings),
-        SECTION_SYSTEM(R.string.preferences_system),
-        SECTION_RENDERER(R.string.preferences_graphics),
+        SECTION_ROOT(R.string.ded_nx2_settings),
+        SECTION_PERFORMANCE(R.string.ded_performance),
+        SECTION_SYSTEM(R.string.ded_nx2_system),
+        SECTION_RENDERER(R.string.ded_nx2_gpu),
         SECTION_FRAME_GEN(R.string.frame_gen),
         SECTION_POST_PROCESSING(R.string.post_processing),
         SECTION_PERFORMANCE_STATS(R.string.stats_overlay_options),
@@ -28,7 +29,7 @@ object Settings {
         SECTION_INPUT_PLAYER_EIGHT,
         SECTION_APP_SETTINGS(R.string.app_settings),
         SECTION_CUSTOM_PATHS(R.string.preferences_custom_paths),
-        SECTION_DEBUG(R.string.preferences_debug),
+        SECTION_DEBUG(R.string.ded_nx2_cpu),
         SECTION_FREEDRENO(R.string.freedreno_settings_title),
         SECTION_APPLETS(R.string.applets_menu);
     }

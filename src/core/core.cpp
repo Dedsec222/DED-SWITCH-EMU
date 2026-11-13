@@ -12,6 +12,7 @@
 #include "common/logging.h"
 #include "common/adpf.h"
 #include "common/settings.h"
+#include "common/nx2_cpu_compat.h"
 #include "common/settings_enums.h"
 #include "common/string_util.h"
 #include "core/arm/exclusive_monitor.h"
@@ -23,6 +24,7 @@
 #include "core/debugger/debugger.h"
 #include "core/device_memory.h"
 #include "core/file_sys/fs_filesystem.h"
+#include "core/file_sys/nup.h"
 #include "core/file_sys/patch_manager.h"
 #include "core/file_sys/program_metadata.h"
 #include "core/file_sys/registered_cache.h"
@@ -55,6 +57,7 @@
 #include "core/hle/service/sm/sm.h"
 #include "core/internal_network/network.h"
 #include "core/loader/loader.h"
+#include "core/loader/nup.h"
 #include "core/memory.h"
 #include "core/memory/cheat_engine.h"
 #include "core/perf_stats.h"
@@ -112,10 +115,19 @@ FileSys::VirtualFile GetGameFileFromPath(const FileSys::VirtualFilesystem& vfs,
 
 namespace {
 
-// Switch 2 titles boot as a loose ExeFS, with main.npdm next to main.
 bool IsSwitch2Program(const FileSys::VirtualFile& file) {
     const auto dir = file != nullptr ? file->GetContainingDirectory() : nullptr;
-    const auto npdm = dir != nullptr ? dir->GetFile("main.npdm") : nullptr;
+    auto npdm = dir != nullptr ? dir->GetFile("main.npdm") : nullptr;
+    if (Loader::AppLoader_Nup::IdentifyType(file) == Loader::FileType::NUP) {
+        const FileSys::NUP container{file};
+        if (container.GetStatus() != Loader::ResultStatus::Success) {
+            return false;
+        }
+        const auto* base = container.GetBasePackage();
+        npdm = base != nullptr && base->exefs_dir != nullptr
+                   ? base->exefs_dir->GetFile("main.npdm")
+                   : nullptr;
+    }
     FileSys::ProgramMetadata metadata;
     return npdm != nullptr && metadata.Load(npdm) == Loader::ResultStatus::Success &&
            metadata.IsSwitch2();
@@ -323,6 +335,20 @@ struct System::Impl {
             Settings::values.memory_layout_mode.SetValue(Settings::MemoryLayout::Memory_12Gb);
         }
 
+#ifdef __ANDROID__
+        if (virtual_filesystem != nullptr && Settings::values.cpu_backend.GetValue() == Settings::CpuBackend::Nce) {
+            auto loader = Loader::GetLoader(system, GetGameFileFromPath(virtual_filesystem, filepath));
+            u64 title{};
+            if (loader && loader->ReadProgramId(title) == Loader::ResultStatus::Success &&
+                Settings::NeedsNx2TranslatedCpu(title, Settings::values.performance_profile.GetValue(), true)) {
+                translated_cpu_override = std::pair{Settings::values.cpu_backend.GetValue(),
+                                                     Settings::values.cpu_backend.UsingGlobal()};
+                Settings::values.cpu_backend.SetGlobal(false);
+                Settings::values.cpu_backend.SetValue(Settings::CpuBackend::Dynarmic);
+                LOG_WARNING(Core, "NX2 CPU compatibility: {:016X} uses Dynarmic translation after observed NCE SIGILL; Custom mode retains explicit CPU selection", title);
+            }
+        }
+#endif
         InitializeKernel(system);
 
         if (params.applet_type == Service::AM::AppletType::Application) {
@@ -450,6 +476,11 @@ struct System::Impl {
         cpu_manager.Shutdown();
         debugger.reset();
         kernel.Shutdown();
+        if (translated_cpu_override) {
+            Settings::values.cpu_backend.SetValue(translated_cpu_override->first);
+            Settings::values.cpu_backend.SetGlobal(translated_cpu_override->second);
+            translated_cpu_override.reset();
+        }
         stop_event = {};
         Network::RestartSocketOperations();
 
@@ -500,6 +531,7 @@ struct System::Impl {
     Network::NetworkInstance network_instance;
     Core::SpeedLimiter speed_limiter;
     ExecuteProgramCallback execute_program_callback;
+    std::optional<std::pair<Settings::CpuBackend, bool>> translated_cpu_override;
     ExitCallback exit_callback;
     ApplicationChangedCallback application_changed_callback;
 

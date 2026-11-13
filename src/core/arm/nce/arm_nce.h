@@ -63,6 +63,7 @@ private:
     static void BreakFromRunCodeSignalHandler(int sig, void* info, void* raw_context);
     static void GuestAlignmentFaultSignalHandler(int sig, void* info, void* raw_context);
     static void GuestAccessFaultSignalHandler(int sig, void* info, void* raw_context);
+    static void GuestIllegalInstructionSignalHandler(int sig, void* info, void* raw_context);
 
     static void LockThreadParameters(void* tpidr);
     static void UnlockThreadParameters(void* tpidr);
@@ -74,6 +75,8 @@ private:
     static bool HandleFailedGuestFault(GuestContext* ctx, void* info, void* raw_context);
     static bool HandleGuestAlignmentFault(GuestContext* ctx, void* info, void* raw_context);
     static bool HandleGuestAccessFault(GuestContext* ctx, void* info, void* raw_context);
+    static bool HandleGuestIllegalInstruction(GuestContext* ctx, void* info, void* raw_context);
+    static void HandleHostIllegalInstruction(int sig, void* info, void* raw_context);
     static void HandleHostAlignmentFault(int sig, void* info, void* raw_context);
     static void HandleHostAccessFault(int sig, void* info, void* raw_context);
 
@@ -83,6 +86,8 @@ public:
     // Members set on initialization.
     std::size_t m_core_index{};
     pid_t m_thread_id{-1};
+    u32 m_illegal_opcode{};
+    u64 m_illegal_pc{};
 
     // Core context.
     GuestContext m_guest_ctx{};

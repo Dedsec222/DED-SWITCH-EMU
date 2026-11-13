@@ -52,6 +52,9 @@ public:
     bool IsSignaled(KernelCore& kernel) const override;
     void OnClientClosed(KernelCore& kernel);
 
+    /// Signals when the client closes while an HLE request is deferred.
+    void SetClientClosedEvent(KernelCore& kernel, KEvent* event);
+
     Result OnRequest(KernelCore& kernel, KSessionRequest* request);
     Result SendReply(KernelCore& kernel, uintptr_t server_message, uintptr_t server_buffer_size,
                      KPhysicalAddress server_message_paddr, bool is_hle = false, bool session_closed = false);
@@ -80,6 +83,9 @@ private:
     using RequestList = Common::IntrusiveListBaseTraits<KSessionRequest>::ListType;
     RequestList m_request_list{};
     KSessionRequest* m_current_request{};
+
+    /// Signaled once the client closes; guarded by m_lock.
+    KEvent* m_client_closed_event{};
 
     KLightLock m_lock;
 };

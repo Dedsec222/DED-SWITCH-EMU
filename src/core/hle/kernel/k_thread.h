@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "common/fiber_context_guard.h"
 #include "common/intrusive_list.h"
 
 #include "common/intrusive_red_black_tree.h"
@@ -919,7 +920,7 @@ private:
     bool m_resource_limit_release_hint{};
     bool m_is_kernel_address_key{};
     StackParameters m_stack_parameters{};
-    std::mutex m_context_guard{};
+    Common::FiberContextGuard m_context_guard{};
 
     // For emulation
     std::shared_ptr<Common::Fiber> m_host_context{};

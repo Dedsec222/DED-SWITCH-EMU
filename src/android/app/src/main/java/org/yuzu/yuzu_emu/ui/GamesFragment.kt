@@ -513,12 +513,8 @@ class GamesFragment : Fragment() {
     }
 
     private fun updateButtonsVisibility() {
-        val showQLaunch = BooleanSetting.ENABLE_QLAUNCH_BUTTON.getBoolean()
         val showFolder = BooleanSetting.ENABLE_FOLDER_BUTTON.getBoolean()
-        val isFirmwareAvailable = NativeLibrary.isFirmwareAvailable()
-
-        val shouldShowQLaunch = showQLaunch && isFirmwareAvailable
-        binding.launchQlaunch.visibility = if (shouldShowQLaunch) View.VISIBLE else View.GONE
+        binding.launchQlaunch.visibility = View.GONE
 
         binding.addDirectory.visibility = if (showFolder) View.VISIBLE else View.GONE
     }

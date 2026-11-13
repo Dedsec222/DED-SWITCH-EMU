@@ -17,8 +17,12 @@ enum class Stage : u32 {
     Compute,
 
     VertexA,
+
+    // Switch 2 task and mesh programs.
+    Task,
+    Mesh,
 };
-constexpr u32 MaxStageTypes = 6;
+constexpr u32 MaxStageTypes = 9;
 
 [[nodiscard]] constexpr Stage StageFromIndex(size_t index) noexcept {
     return static_cast<Stage>(static_cast<size_t>(Stage::VertexB) + index);

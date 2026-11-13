@@ -10,8 +10,12 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <deque>
 #include <filesystem>
+#include <unordered_map>
+#include <unordered_set>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include "common/container/unordered_map.h"
 #include <vector>
@@ -102,6 +106,14 @@ struct ShaderPools {
     Shader::ObjectPool<Shader::Maxwell::Flow::Block> flow_block{32};
 };
 
+struct ComputePipelineCacheEntry {
+    std::unique_ptr<ComputePipeline> pipeline;
+    std::string failure;
+
+    [[nodiscard]] ComputePipeline* Get(bool native, GPUVAddr address,
+                                       const ComputePipelineCacheKey& key) const;
+};
+
 class PipelineCache : public VideoCommon::ShaderCache {
 public:
     explicit PipelineCache(Tegra::MaxwellDeviceMemoryManager& device_memory_, const Device& device,
@@ -113,6 +125,8 @@ public:
     ~PipelineCache();
 
     [[nodiscard]] GraphicsPipeline* CurrentGraphicsPipeline();
+
+    void TickFrame();
 
     [[nodiscard]] ComputePipeline* CurrentComputePipeline();
 
@@ -131,14 +145,14 @@ private:
         std::span<Shader::Environment* const> envs, PipelineStatistics* statistics,
         bool build_in_parallel);
 
-    std::unique_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineCacheKey& key,
-                                                           const ShaderInfo* shader);
+    ComputePipelineCacheEntry CreateComputePipeline(const ComputePipelineCacheKey& key,
+                                                     const ShaderInfo* shader);
 
-    std::unique_ptr<ComputePipeline> CreateComputePipeline(ShaderPools& pools,
-                                                           const ComputePipelineCacheKey& key,
-                                                           Shader::Environment& env,
-                                                           PipelineStatistics* statistics,
-                                                           bool build_in_parallel);
+    ComputePipelineCacheEntry CreateComputePipeline(ShaderPools& pools,
+                                                     const ComputePipelineCacheKey& key,
+                                                     Shader::Environment& env,
+                                                     PipelineStatistics* statistics,
+                                                     bool build_in_parallel);
 
     void SerializeVulkanPipelineCache(const std::filesystem::path& filename,
                                       const vk::PipelineCache& pipeline_cache, u32 cache_version);
@@ -163,7 +177,13 @@ private:
     GraphicsPipelineCacheKey graphics_key{};
     GraphicsPipeline* current_pipeline{};
 
-    ::Common::unordered_map<ComputePipelineCacheKey, std::unique_ptr<ComputePipeline>> compute_cache;
+    /// Destroys graphics pipelines unused for a while, once the GPU is done with them.
+    void EvictUnusedPipelines();
+    u64 frame_count{};
+    std::deque<std::pair<u64, std::unique_ptr<GraphicsPipeline>>> evicted_pipelines; ///< (tick, pipeline)
+    std::unordered_set<u64> used_and_evicted; ///< Key hashes of pipelines used this session, evicted since
+
+    ::Common::unordered_map<ComputePipelineCacheKey, ComputePipelineCacheEntry> compute_cache;
     ::Common::unordered_map<GraphicsPipelineCacheKey, std::unique_ptr<GraphicsPipeline>> graphics_cache;
 
     ShaderPools main_pools;
@@ -172,6 +192,16 @@ private:
     Shader::HostTranslateInfo host_info;
 
     std::filesystem::path pipeline_cache_filename;
+
+    /// Key hashes of the graphics pipelines in the disk cache. Only those a recent session used
+    /// (used_pipelines) are built at boot; the rest are built when first needed, and not stored
+    /// again. Each built pipeline holds driver memory (title 1: 6.5k cached, a quarter used).
+    std::unordered_set<u64> disk_pipelines;
+    std::unordered_map<u64, u8> used_pipelines; ///< Key hash -> sessions since it was last used
+    std::unordered_set<const GraphicsPipeline*> used_this_session;
+    std::filesystem::path used_pipelines_filename;
+    std::chrono::steady_clock::time_point used_pipelines_saved{};
+    void SaveUsedPipelines();
 
     std::filesystem::path vulkan_pipeline_cache_filename;
     vk::PipelineCache vulkan_pipeline_cache;

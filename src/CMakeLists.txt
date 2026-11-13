@@ -291,8 +291,15 @@ if (ENABLE_WEB_SERVICE)
 endif()
 
 if (ANDROID)
-    add_subdirectory(android/app/src/main/jni)
-    target_include_directories(yuzu-android PRIVATE android/app/src/main)
+    option(DED_USE_PREBUILT_ANDROID_ENGINE
+        "Use the staged prebuilt Android JNI engine" OFF)
+
+    if (DED_USE_PREBUILT_ANDROID_ENGINE)
+        message(STATUS "DED-SWITCH: using prebuilt Android JNI engine")
+    else()
+        add_subdirectory(android/app/src/main/jni)
+        target_include_directories(yuzu-android PRIVATE android/app/src/main)
+    endif()
 endif()
 
 include(GenerateDepHashes)

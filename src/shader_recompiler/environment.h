@@ -76,6 +76,12 @@ public:
 
     [[nodiscard]] virtual u32 TranslateProgramAddress(u32 address) const { return address; }
 
+    /// Switch 2 native programs are lowered to Maxwell instructions.
+    [[nodiscard]] virtual bool IsNativeProgram() const { return false; }
+
+    /// Whether a native program constant-buffer word contains a GPU storage pointer.
+    [[nodiscard]] virtual bool IsCbufStorageBufferPointer(u32, u32) { return true; }
+
     [[nodiscard]] virtual u32 ReadCbufValue(u32 cbuf_index, u32 cbuf_offset) = 0;
 
     [[nodiscard]] virtual TextureType ReadTextureType(u32 raw_handle) = 0;
@@ -95,6 +101,8 @@ public:
     [[nodiscard]] virtual std::array<u32, 3> WorkgroupSize() const = 0;
 
     [[nodiscard]] virtual bool HasHLEMacroState() const = 0;
+
+    [[nodiscard]] virtual bool HasNativeInstructions() const { return false; }
 
     [[nodiscard]] virtual std::optional<ReplaceConstant> GetReplaceConstBuffer(u32 bank,
                                                                                u32 offset) = 0;
@@ -121,9 +129,19 @@ public:
         return is_proprietary_driver;
     }
 
+    [[nodiscard]] const std::array<u32, 3>& MeshRegisters() const noexcept {
+        return mesh_registers;
+    }
+
+    [[nodiscard]] const ProgramHeader& MeshPrimitiveHeader() const noexcept {
+        return mesh_primitive_header;
+    }
+
 protected:
     ProgramHeader sph{};
     std::array<u32, 8> gp_passthrough_mask{};
+    std::array<u32, 3> mesh_registers{};
+    ProgramHeader mesh_primitive_header{};
     Stage stage{};
     u32 start_address{};
     bool is_proprietary_driver{};

@@ -13,6 +13,7 @@ namespace Common {
 // in particular, because ART's handler accesses tpidr_el0, which conflicts with NCE.
 // This extracts the libc symbol and calls it directly.
 int SigAction(int signum, const struct sigaction* act, struct sigaction* oldact);
+void ForwardSignal(int signum, siginfo_t* info, void* context, const struct sigaction& previous);
 
 } // namespace Common
 

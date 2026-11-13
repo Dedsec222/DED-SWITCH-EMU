@@ -4,6 +4,7 @@
 // SPDX-FileCopyrightText: Copyright 2020 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
 #include <thread>
 
 #include <ranges>
@@ -76,6 +77,11 @@ void MasterSemaphore::Refresh() {
                                              std::memory_order_relaxed));
 }
 
+bool MasterSemaphore::HangWatchEnabled() {
+    static const bool enabled = std::getenv("EDEN_NX2_HANG_WATCH") != nullptr;
+    return enabled;
+}
+
 void MasterSemaphore::Wait(u64 tick) {
     if (!semaphore) {
         // Fast check: already reached the requested tick?
@@ -104,7 +110,22 @@ void MasterSemaphore::Wait(u64 tick) {
     }
 
     // If none of the above is hit, fallback to a regular wait
-    while (!semaphore.Wait(tick)) {
+    try {
+        if (HangWatchEnabled()) {
+            constexpr u64 interval_ns = 3'000'000'000ULL;
+            for (u64 waited_s = 3; !semaphore.Wait(tick, interval_ns); waited_s += 3) {
+                Refresh();
+                if (on_stall && waited_s <= 30) {
+                    on_stall(tick, KnownGpuTick(), CurrentTick(), waited_s);
+                }
+            }
+        }
+        while (!semaphore.Wait(tick)) {
+        }
+    } catch (const vk::Exception& exception) {
+        // The throw ends the process; say why first (a device loss reached nothing else here).
+        LOG_CRITICAL(Render_Vulkan, "Waiting for GPU tick {} failed: {}", tick, exception.what());
+        throw;
     }
 
     Refresh();

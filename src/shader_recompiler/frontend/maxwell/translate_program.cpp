@@ -101,10 +101,12 @@ void AddNVNStorageBuffers(IR::Program& program) {
         switch (program.stage) {
         case Stage::VertexA:
         case Stage::VertexB:
+        case Stage::Task: // bound in the vertex slot
             return 0x110u;
         case Stage::TessellationControl:
             return 0x210u;
         case Stage::TessellationEval:
+        case Stage::Mesh: // bound in the tessellation slot
             return 0x310u;
         case Stage::Geometry:
             return 0x410u;

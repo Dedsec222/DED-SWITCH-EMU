@@ -72,7 +72,7 @@
     <string name="show_shaders_building">Show Shaders Building</string>
     <string name="show_shaders_building_description">Display current number of shaders being built</string>
     <string name="pipeline_worker_cores">Pipeline Worker Threads</string>
-    <string name="pipeline_worker_cores_description">Manage the amount of cores used for building Vulkan pipelines, the higher value will improve pipeline compilation performance but temperatures will increase as well.</string>
+    <string name="pipeline_worker_cores_description">Maximum Vulkan compiler workers (1–8). Alien uses at most half the CPU threads, capped at four, or two with a small GPU memory budget. Driver compatibility may require one worker.</string>
     <string name="overlay_position">Overlay Position</string>
     <string name="overlay_position_description">Choose where the overlay is displayed on the screen</string>
     <string name="overlay_position_top_left">Top Left</string>
@@ -537,7 +537,7 @@
     <string name="custom_cpu_ticks_description">Set a custom value of CPU ticks. Higher values can increase performance, but may also cause the game to freeze. A range of 77–21000 is recommended.</string>
     <string name="cpu_ticks">Ticks</string>
     <string name="memory_layout">Memory Layout</string>
-    <string name="memory_layout_description">(EXPERIMENTAL) Change the emulated memory layout. This setting will not increase performance, but may help with games utilizing high resolutions via mods. Do not use on phones with 8GB of RAM or less. Only works on the Dynarmic (JIT) backend.</string>
+    <string name="memory_layout_description">Guest RAM layout. Switch 2 titles use at least 12 GiB. Lower layouts apply to other titles. Restart emulation after changing this setting.</string>
 
     <string name="generate">Generate</string>
 
@@ -1885,4 +1885,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <string name="add_folders">Add Folder</string>
     <string name="percent">%1$d%%</string>
 
+    <string name="ded_performance">Alien Performance Engine</string>
+    <string name="ded_performance_description">Stable, Performance and experimental Alien presets; guest memory and resolution</string>
+    <string name="ded_profile">Performance profile</string>
+    <string name="ded_profile_description">Applied on the next launch. Custom uses manual settings. Stable: high GPU accuracy, conservative VRAM, synchronous shaders. Performance: Stable plus NX2 GPU thread split where supported. Alien: low GPU accuracy and asynchronous shaders; graphics may be missing. Mobile texture caches retain driver-budget headroom and compiler workers are bounded. Presets enable caches, 100% speed and automatic frame pacing. Memory and resolution remain selectable.</string>
+    <string name="ded_thermal_description">Thermal protection: presets temporarily cap speed to 75%, 50% or 25% at severe, critical or emergency heat. Normal speed returns after cooling to light or none. Android still controls hardware clocks.</string>
+    <string name="ded_thermal_active">Device is hot. Performance presets reduce emulation speed until it cools.</string>
+    <string name="ded_kernel_trace">Detailed kernel tracing (slow)</string>
+    <string name="ded_kernel_trace_description">Opt into logging every kernel call for diagnosis. Performance presets normally keep kernel logs at Info to reduce CPU and storage overhead. Fatal errors remain logged. Restart emulation after changing.</string>
 </resources>

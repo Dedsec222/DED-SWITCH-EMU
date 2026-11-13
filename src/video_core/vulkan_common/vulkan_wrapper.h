@@ -232,6 +232,7 @@ struct DeviceDispatch : InstanceDispatch {
     PFN_vkCmdDrawIndirectCount vkCmdDrawIndirectCount{};
     PFN_vkCmdDrawIndexedIndirectCount vkCmdDrawIndexedIndirectCount{};
     PFN_vkCmdDrawIndirectByteCountEXT vkCmdDrawIndirectByteCountEXT{};
+    PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT{};
     PFN_vkCmdEndConditionalRenderingEXT vkCmdEndConditionalRenderingEXT{};
     PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT{};
     PFN_vkCmdEndQuery vkCmdEndQuery{};
@@ -243,6 +244,7 @@ struct DeviceDispatch : InstanceDispatch {
     PFN_vkCmdPushConstants vkCmdPushConstants{};
     PFN_vkCmdPushDescriptorSetWithTemplateKHR vkCmdPushDescriptorSetWithTemplateKHR{};
     PFN_vkCmdResetQueryPool vkCmdResetQueryPool{};
+    PFN_vkCmdWriteTimestamp vkCmdWriteTimestamp{};
     PFN_vkCmdResolveImage vkCmdResolveImage{};
     PFN_vkCmdSetBlendConstants vkCmdSetBlendConstants{};
     PFN_vkCmdSetCullModeEXT vkCmdSetCullModeEXT{};
@@ -335,6 +337,7 @@ struct DeviceDispatch : InstanceDispatch {
     PFN_vkGetEventStatus vkGetEventStatus{};
     PFN_vkGetFenceStatus vkGetFenceStatus{};
     PFN_vkGetImageMemoryRequirements vkGetImageMemoryRequirements{};
+    PFN_vkGetImageSparseMemoryRequirements vkGetImageSparseMemoryRequirements{};
     PFN_vkGetPipelineCacheData vkGetPipelineCacheData{};
     PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR{};
 #ifdef _WIN32
@@ -342,6 +345,8 @@ struct DeviceDispatch : InstanceDispatch {
 #endif
     PFN_vkGetPipelineExecutablePropertiesKHR vkGetPipelineExecutablePropertiesKHR{};
     PFN_vkGetPipelineExecutableStatisticsKHR vkGetPipelineExecutableStatisticsKHR{};
+    PFN_vkGetPipelineExecutableInternalRepresentationsKHR
+        vkGetPipelineExecutableInternalRepresentationsKHR{};
     PFN_vkGetQueryPoolResults vkGetQueryPoolResults{};
     PFN_vkGetSemaphoreCounterValue vkGetSemaphoreCounterValue{};
     PFN_vkMapMemory vkMapMemory{};
@@ -735,6 +740,15 @@ public:
         return usage;
     }
 
+    /// Where the image's memory lies: the block (0 when the image has no memory or a block of
+    /// its own), the block's size and the image's part of it.
+    struct MemoryBlock {
+        u64 block;
+        u64 block_size;
+        u64 size;
+    };
+    [[nodiscard]] MemoryBlock GetMemoryBlock() const noexcept;
+
 private:
     void Release() const noexcept;
 
@@ -1111,11 +1125,19 @@ public:
 
     VkMemoryRequirements GetImageMemoryRequirements(VkImage image) const noexcept;
 
+    std::vector<VkSparseImageMemoryRequirements> GetImageSparseMemoryRequirements(
+        VkImage image) const;
+
     std::vector<VkPipelineExecutablePropertiesKHR> GetPipelineExecutablePropertiesKHR(
         VkPipeline pipeline) const;
 
     std::vector<VkPipelineExecutableStatisticKHR> GetPipelineExecutableStatisticsKHR(
         VkPipeline pipeline, u32 executable_index) const;
+
+    /// Name and text of each internal representation (e.g. the driver's IR and ISA).
+    std::vector<std::pair<std::string, std::string>>
+    GetPipelineExecutableInternalRepresentationsKHR(VkPipeline pipeline,
+                                                     u32 executable_index) const;
 
     void UpdateDescriptorSets(Span<VkWriteDescriptorSet> writes,
                               Span<VkCopyDescriptorSet> copies) const noexcept;
@@ -1264,6 +1286,11 @@ public:
         dld->vkCmdResetQueryPool(handle, query_pool, first, count);
     }
 
+    void WriteTimestamp(VkPipelineStageFlagBits stage, VkQueryPool query_pool,
+                        u32 query) const noexcept {
+        dld->vkCmdWriteTimestamp(handle, stage, query_pool, query);
+    }
+
     void BindDescriptorSets(VkPipelineBindPoint bind_point, VkPipelineLayout layout, u32 first,
                             Span<VkDescriptorSet> sets, Span<u32> dynamic_offsets) const noexcept {
         dld->vkCmdBindDescriptorSets(handle, bind_point, layout, first, sets.size(), sets.data(),
@@ -1313,6 +1340,10 @@ public:
     void DrawIndexedIndirect(VkBuffer src_buffer, VkDeviceSize src_offset, u32 draw_count,
                              u32 stride) const noexcept {
         dld->vkCmdDrawIndexedIndirect(handle, src_buffer, src_offset, draw_count, stride);
+    }
+
+    void DrawMeshTasksEXT(u32 group_count_x, u32 group_count_y, u32 group_count_z) const noexcept {
+        dld->vkCmdDrawMeshTasksEXT(handle, group_count_x, group_count_y, group_count_z);
     }
 
     void DrawIndirectCount(VkBuffer src_buffer, VkDeviceSize src_offset, VkBuffer count_buffer,

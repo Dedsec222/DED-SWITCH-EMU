@@ -143,7 +143,9 @@ void SigHandler::SigAction(int sig, siginfo_t* info, void* raw_context) {
             return;
         }
     }
-    LOG_ERROR(Core, "Unhandled {} at {:#018x}\n", sig == SIGSEGV ? "SIGSEGV" : "SIGBUS", CTX_PC);
+    LOG_ERROR(Core, "Unhandled {} pc={:#018x} fault_addr={} si_code={}\n",
+              sig == SIGSEGV ? "SIGSEGV" : "SIGBUS", CTX_PC,
+              fmt::ptr(info ? info->si_addr : nullptr), info ? info->si_code : 0);
 
     struct sigaction* retry_sa = sig == SIGSEGV ? &sig_handler->old_sa_segv : &sig_handler->old_sa_bus;
     if (retry_sa->sa_flags & SA_SIGINFO) {

@@ -25,6 +25,7 @@
 #include "common/fs/path_util.h"
 #include "common/logging.h"
 #include "common/settings.h"
+#include "common/performance_profile.h"
 #include "common/time_zone.h"
 
 #if defined(__linux__ ) && defined(ARCHITECTURE_arm64)
@@ -224,6 +225,18 @@ u64 GetCurrentProgramID() {
     return current_program_id;
 }
 
+static std::optional<AstcRecompression> astc_recompression_override;
+
+AstcRecompression GetAstcRecompression() {
+    return astc_recompression_override.value_or(values.astc_recompression.GetValue());
+}
+
+void SetAstcRecompressionOverride(std::optional<AstcRecompression> recompression) {
+    astc_recompression_override = recompression;
+}
+
+
+
 bool IsDockedMode() {
     return values.use_docked_mode.GetValue() == Settings::ConsoleMode::Docked;
 }
@@ -420,7 +433,7 @@ void SetConfiguringGlobal(bool is_global) {
     configuring_global = is_global;
 }
 
-u16 SpeedLimit() {
+static u16 RequestedSpeedLimit() {
     switch (SpeedMode(values.current_speed_mode)) {
     case SpeedMode::Standard:
         return values.speed_limit.GetValue();
@@ -433,6 +446,12 @@ u16 SpeedLimit() {
     }
 
     return 100;
+}
+
+u16 SpeedLimit() {
+    const u16 requested = RequestedSpeedLimit();
+    return values.performance_profile.GetValue() == 0 ? requested
+                                                     : thermal_speed_policy.Limit(requested);
 }
 
 void SetSpeedMode(const SpeedMode& mode) {

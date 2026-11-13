@@ -1,10 +1,15 @@
+#pragma GCC diagnostic ignored "-Wunused-variable"
 // SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // SPDX-FileCopyrightText: Copyright 2018 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstdlib>
+#include <mutex>
 #include <cstring>
 #include <vector>
 #include "common/assert.h"
@@ -23,6 +28,7 @@
 #include "video_core/engines/puller.h"
 #include "video_core/gpu.h"
 #include "video_core/host1x/host1x.h"
+#include "video_core/memory_manager.h"
 
 namespace Service::Nvidia::Devices {
 namespace {
@@ -410,7 +416,7 @@ NvResult nvhost_gpu::SubmitGPFIFOImpl(IoctlSubmitGpfifo& params, Tegra::CommandL
 
     auto& gpu = system.GPU();
 
-    std::scoped_lock lock(channel_mutex);
+    std::unique_lock lock(channel_mutex);
 
     // Lazily initialize channel when address space is available
     if (!channel_state->initialized && channel_state->memory_manager) {
@@ -420,7 +426,7 @@ NvResult nvhost_gpu::SubmitGPFIFOImpl(IoctlSubmitGpfifo& params, Tegra::CommandL
     const auto bind_id = channel_state->bind_id;
 
     if (g_nx2_driver) {
-        for (const auto& entry : entries.command_lists) {
+        for ([[maybe_unused]] const auto& entry : entries.command_lists) {
             LOG_TRACE(Service_NVDRV, "nx2 GPFIFO entry raw={:#018x} addr={:#x} size={:#x}", entry.raw,
                      entry.addr.Value(), entry.size.Value());
         }
@@ -432,6 +438,43 @@ NvResult nvhost_gpu::SubmitGPFIFOImpl(IoctlSubmitGpfifo& params, Tegra::CommandL
                 system.ApplicationMemory().ReadBlock(entry.addr.Value(), words.data(),
                                                      words.size() * sizeof(u32));
                 entries.submit_hashes.push_back(Tegra::HashPushbufferWords(words));
+            }
+        }
+        // The present returns before the GPU thread reaches this frame's work (nx2_gsv.h,
+        // frames ahead), and Mario Kart World then refills command memory it already
+        // submitted: the end of a frame ran with the next frame's present image as its render
+        // target, leaving an image three frames old to be shown. Keep the words as submitted.
+        // EDEN_NX2_PB_SNAPSHOT=0: execute from memory.
+        static const bool snapshot = [] {
+            const char* value = std::getenv("EDEN_NX2_PB_SNAPSHOT");
+            return value == nullptr || value[0] != '0';
+        }();
+        if (snapshot && channel_state->memory_manager && channel_state->payload) {
+            // Before the copy: a suspension during it must count as one after it.
+            entries.snapshot_suspensions =
+                channel_state->payload->dma_pusher.suspensions.load(std::memory_order_acquire);
+            size_t words = 0;
+            for (const auto& entry : entries.command_lists) {
+                words += entry.size;
+            }
+            entries.submitted_words.resize(words);
+            entries.submitted_offsets.reserve(entries.command_lists.size());
+            size_t offset = 0;
+            for (u32 i = 0; i < entries.command_lists.size(); ++i) {
+                const auto& entry = entries.command_lists[i];
+                entries.submitted_offsets.push_back(static_cast<u32>(offset));
+                // GMMU maps run on the GPU thread (GPU::MapInOrder): an entry on addresses a
+                // queued map changes would copy as zeros (Pokopia's first lists). DmaPusher::Push
+                // copies it after the map instead.
+                const u64 bytes = static_cast<u64>(entry.size) * sizeof(u32);
+                if (system.GPU().IsMapPending(entry.addr, bytes)) {
+                    entries.deferred_entries.push_back(i);
+                } else {
+                    channel_state->memory_manager->ReadBlockUnsafe(
+                        entry.addr, entries.submitted_words.data() + offset,
+                        entry.size * sizeof(u32));
+                }
+                offset += entry.size;
             }
         }
     }
@@ -477,6 +520,50 @@ NvResult nvhost_gpu::SubmitGPFIFOImpl(IoctlSubmitGpfifo& params, Tegra::CommandL
                  system.Host1x().GetSyncpointManager().GetGuestSyncpointValue(params.fence.id));
     }
     flags.raw = 0;
+
+    static const bool sync_submit = [] {
+        const char* value = std::getenv("EDEN_NX2_SYNC_SUBMIT");
+        return value != nullptr && value[0] != '0';
+    }();
+    if (g_nx2_driver && sync_submit && increment > 0) {
+        lock.unlock();
+        auto& syncpoints = system.Host1x().GetSyncpointManager();
+        if (!syncpoints.IsReadyGuest(params.fence.id, params.fence.value)) {
+            struct Wake {
+                std::mutex mutex;
+                std::condition_variable cv;
+                bool done{};
+            };
+            auto wake = std::make_shared<Wake>();
+            syncpoints.RegisterGuestAction(params.fence.id, params.fence.value, [wake] {
+                {
+                    std::scoped_lock lk{wake->mutex};
+                    wake->done = true;
+                }
+                wake->cv.notify_all();
+            });
+            const auto deadline =
+                std::chrono::steady_clock::now() + std::chrono::milliseconds{2000};
+            std::unique_lock lk{wake->mutex};
+            while (!wake->done && system.IsPoweredOn()) {
+                const auto now = std::chrono::steady_clock::now();
+                if (now >= deadline) {
+                    break;
+                }
+                wake->cv.wait_for(
+                    lk, std::min(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now),
+                                 std::chrono::milliseconds{50}));
+            }
+        }
+        static std::atomic<u32> timeouts{};
+        if (!syncpoints.IsReadyGuest(params.fence.id, params.fence.value) &&
+            (timeouts.fetch_add(1, std::memory_order_relaxed) % 64) == 0) {
+            LOG_WARNING(Service_NVDRV,
+                        "nx2 sync submit timed out waiting for fence ({}, {}), current value={}",
+                        params.fence.id, params.fence.value,
+                        syncpoints.GetGuestSyncpointValue(params.fence.id));
+        }
+    }
 
     return NvResult::Success;
 }

@@ -36,6 +36,7 @@ android {
     namespace = "org.yuzu.yuzu_emu"
 
     compileSdkVersion = "android-36"
+    buildToolsVersion = "36.0.0"
     ndkVersion = "28.2.13676358"
 
     val isNightly =
@@ -174,7 +175,7 @@ android {
             signingConfig = signingConfigs.getByName("default")
             isDebuggable = true
             isJniDebuggable = true
-            versionNameSuffix = "-debug"
+            versionNameSuffix = "-nx2-teardown-debug"
             applicationIdSuffix = ".debug"
 
             manifestPlaceholders += mapOf("appNameSuffix" to " Debug")
@@ -190,8 +191,8 @@ android {
             isDefault = true
             minSdk = 33
 
-            manifestPlaceholders += mapOf("appNameBase" to "Eden")
-            resValue("string", "app_name_suffixed", "Eden")
+            manifestPlaceholders += mapOf("appNameBase" to "DED SWITCH 2")
+            resValue("string", "app_name_suffixed", "DED SWITCH 2")
 
             ndk {
                 abiFilters += listOf("arm64-v8a")
@@ -259,8 +260,8 @@ android {
 
     externalNativeBuild {
         cmake {
-            version = "3.31.5"
             path = file("${edenDir}/CMakeLists.txt")
+            version = "3.31.5"
         }
     }
 
@@ -270,7 +271,7 @@ android {
 
         // apply nightly suffix I/A
         resValue("string", "app_name_suffixed", "$currentName$suffix")
-        resValue("string", "app_name", "Eden$suffix")
+        resValue("string", "app_name", "$currentName$suffix")
     }
 
     sourceSets {

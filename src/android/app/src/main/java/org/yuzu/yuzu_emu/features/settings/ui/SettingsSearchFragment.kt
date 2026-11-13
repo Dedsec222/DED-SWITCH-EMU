@@ -107,7 +107,14 @@ class SettingsSearchFragment : Fragment() {
             return
         }
 
-        val baseList = SettingsItem.settingsItems
+        val baseList = SettingsItem.settingsItems.filterKeys {
+            it !in setOf(
+                "use_docked_mode", "fast_cpu_time", "fast_gpu_time",
+                "cpu_ticks", "use_custom_cpu_ticks", "use_auto_stub", "cpuopt_unsafe_host_mmu",
+                "skip_cpu_inner_invalidation", "fix_bloom_effects", "emulate_bgr565",
+                "enable_qlaunch_button", "player_select_applet"
+            ) && !it.endsWith("_applet_mode")
+        }
         val similarityAlgorithm = if (searchTerm.length > 2) Cosine() else Cosine(1)
         val sortedList: List<SettingsItem> = baseList.mapNotNull { item ->
             val title = item.value.title.lowercase()

@@ -201,9 +201,15 @@ struct Values {
                                              linkage, false, "dump_audio_commands", Category::Audio, Specialization::Default, false};
 
     // Core
+    SwitchableSetting<u32, true> performance_profile{linkage, 0, 0, 3, "performance_profile",
+                                                     Category::Core};
     SwitchableSetting<bool> use_multi_core{linkage, true, "use_multi_core", Category::Core};
     SwitchableSetting<MemoryLayout, true> memory_layout_mode{linkage,
+#ifdef __ANDROID__
+                                                             MemoryLayout::Memory_12Gb,
+#else
                                                              MemoryLayout::Memory_4Gb,
+#endif
                                                              "memory_layout_mode",
                                                              Category::Core,
                                                              Specialization::Default,
@@ -363,6 +369,9 @@ struct Values {
                                                     Specialization::Default,
                                                     true,
                                                     true};
+    // A Switch 2 game's own DLSS network, when supported.
+    SwitchableSetting<bool> game_dlss_network{linkage, false, "game_dlss_network",
+                                              Category::Renderer};
     SwitchableSetting<int, true> fsr_sharpening_slider{linkage,
 #ifdef __ANDROID__
                                                        0,
@@ -420,6 +429,15 @@ struct Values {
     SwitchableSetting<bool> frame_gen{linkage, false, "frame_gen", Category::Renderer,
                                       Specialization::Default, true, false};
 
+    SwitchableSetting<FrameGenType> frame_gen_type{linkage,
+                                                   FrameGenType::Fsr3,
+                                                   "frame_gen_type",
+                                                   Category::Renderer,
+                                                   Specialization::Default,
+                                                   true,
+                                                   false,
+                                                   &frame_gen};
+
     SwitchableSetting<u32, true> frame_gen_multiplier{linkage,
                                                       2,
                                                       2,
@@ -475,6 +493,9 @@ struct Values {
                                                         &frame_gen};
 
     SwitchableSetting<bool> frame_gen_dump_flow{linkage, false, "frame_gen_dump_flow",
+                                                Category::Renderer};
+
+    SwitchableSetting<bool> nx2_gpu_thread_split{linkage, true, "nx2_gpu_thread_split",
                                                 Category::Renderer};
 
     SwitchableSetting<bool> use_asynchronous_gpu_emulation{linkage, true, "use_asynchronous_gpu_emulation",
@@ -592,6 +613,11 @@ struct Values {
 
     SwitchableSetting<bool> use_video_framerate{linkage, false, "use_video_framerate",
                                                 Category::RendererAdvanced};
+
+    SwitchableSetting<bool> mkw_30fps{linkage, false, "mkw_30fps",
+                                      Category::RendererAdvanced};
+    SwitchableSetting<bool> mkw_dynamic_fps{linkage, false, "mkw_dynamic_fps",
+                                             Category::RendererAdvanced};
 
     SwitchableSetting<bool> use_reactive_flushing{linkage,
 #ifdef __ANDROID__
@@ -978,6 +1004,14 @@ void SetCurrentProgramID(u64 program_id);
 u64 GetCurrentProgramID();
 
 bool IsOpenGL();
+
+// Switch 2 ASTC recompression override.
+AstcRecompression GetAstcRecompression();
+void SetAstcRecompressionOverride(std::optional<AstcRecompression> recompression);
+
+// Switch 2 ASTC recompression override.
+AstcRecompression GetAstcRecompression();
+void SetAstcRecompressionOverride(std::optional<AstcRecompression> recompression);
 
 bool IsDockedMode();
 

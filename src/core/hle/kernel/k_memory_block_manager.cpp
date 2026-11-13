@@ -34,7 +34,11 @@ void KMemoryBlockManager::Finalize(KMemoryBlockSlabManager* slab_manager,
     while (it != m_memory_block_tree.end()) {
         KMemoryBlock* block = std::addressof(*it);
         it = m_memory_block_tree.erase(it);
-        block_callback(block->GetAddress(), block->GetSize());
+        // Free blocks describe unused guest address space, including the portion outside
+        // the smaller Android fastmem arena. They have no host mappings or pages to release.
+        if (block->GetState() != KMemoryState::Free) {
+            block_callback(block->GetAddress(), block->GetSize());
+        }
         slab_manager->Free(block);
     }
 

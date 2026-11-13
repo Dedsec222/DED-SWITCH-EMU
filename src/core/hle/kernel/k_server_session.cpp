@@ -1083,7 +1083,24 @@ KServerSession::~KServerSession() = default;
 void KServerSession::Destroy(KernelCore& kernel) {
     m_parent->OnServerClosed(kernel);
     this->CleanupRequests(kernel);
+    this->SetClientClosedEvent(kernel, nullptr);
     m_parent->Close(kernel);
+}
+
+void KServerSession::SetClientClosedEvent(KernelCore& kernel, KEvent* event) {
+    if (event != nullptr) {
+        event->Open(kernel);
+    }
+
+    KEvent* previous;
+    {
+        KScopedLightLock lk{m_lock};
+        previous = std::exchange(m_client_closed_event, event);
+    }
+
+    if (previous != nullptr) {
+        previous->Close(kernel);
+    }
 }
 
 Result KServerSession::ReceiveRequest(KernelCore& kernel, uintptr_t server_message, uintptr_t server_buffer_size,
@@ -1534,6 +1551,11 @@ void KServerSession::OnClientClosed(KernelCore& kernel) {
 
     // Notify.
     this->NotifyAvailable(kernel, ResultSessionClosed);
+
+    // Wake an HLE server holding a deferred request.
+    if (m_client_closed_event != nullptr) {
+        m_client_closed_event->Signal(kernel);
+    }
 }
 
 } // namespace Kernel

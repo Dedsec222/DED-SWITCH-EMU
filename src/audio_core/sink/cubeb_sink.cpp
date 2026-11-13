@@ -124,6 +124,10 @@ public:
         cubeb_stream_destroy(stream_backend);
     }
 
+    bool IsReady() const override {
+        return stream_backend != nullptr && !failed;
+    }
+
     /**
      * Start the sink stream.
      *
@@ -131,7 +135,7 @@ public:
      *                 Default false.
      */
     void Start(bool resume = false) override {
-        if (!ctx || !paused) {
+        if (!IsReady() || !paused) {
             return;
         }
 

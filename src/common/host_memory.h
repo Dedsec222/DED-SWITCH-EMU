@@ -49,6 +49,8 @@ public:
     void Unmap(size_t virtual_offset, size_t length, bool separate_heap);
 
     void Protect(size_t virtual_offset, size_t length, MemoryPermission perms);
+    void HintCold(size_t physical_offset, size_t length,
+                  std::optional<size_t> virtual_offset) const;
 
     void EnableDirectMappedAddress();
 

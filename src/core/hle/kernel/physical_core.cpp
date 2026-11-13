@@ -108,6 +108,14 @@ void PhysicalCore::RunThread(KernelCore& kernel, Kernel::KThread* thread) {
             ExitContext();
         }
 
+        if (True(hr & Core::HaltReason::IllegalInstruction)) {
+            interface->GetContext(thread->GetContext());
+            LOG_ERROR(Core_ARM, "Guest CPU instruction is unsupported; stopping the session cleanly at pc={:#x}", thread->GetContext().pc);
+            thread->RequestSuspend(kernel, SuspendType::Debug);
+            system.Exit();
+            return;
+        }
+
         // Determine why we stopped.
         // If a step completed successfully, skip other halt reason handlers
         // the step takes priority (e.g. step may also set InstructionBreakpoint

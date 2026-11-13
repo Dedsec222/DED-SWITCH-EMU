@@ -56,6 +56,21 @@ private:
     vk::ShaderModule module;
 };
 
+class VertexRepackPass final : public ComputePass {
+public:
+    VertexRepackPass(const Device& device, Scheduler& scheduler, DescriptorPool& descriptor_pool,
+                     StagingBufferPool& staging_pool, ComputePassDescriptorQueue& descriptor_queue);
+    /// Returns nothing when the range exceeds the device limits or the source buffer; the binding
+    /// is then left as is.
+    std::optional<std::pair<VkBuffer, VkDeviceSize>> Assemble(VkBuffer source, u32 offset, u32 size,
+                                                              u64 buffer_size);
+
+private:
+    Scheduler& scheduler;
+    StagingBufferPool& staging_pool;
+    ComputePassDescriptorQueue& descriptor_queue;
+};
+
 class Uint8Pass final : public ComputePass {
 public:
     explicit Uint8Pass(const Device& device_, Scheduler& scheduler_,
@@ -131,6 +146,11 @@ public:
     void Assemble(Image& image, const StagingBufferRef& map,
                   std::span<const VideoCommon::SwizzleParameters> swizzles);
 
+    /// Decodes only `layers` of `image` (an initialized array); `map` holds them in order.
+    void AssembleLayers(Image& image, const StagingBufferRef& map,
+                        std::span<const VideoCommon::SwizzleParameters> swizzles,
+                        std::span<const u32> layers);
+
     /// Where a decode writes: an RGBA8 image with a storage view per (host) level.
     struct Target {
         VkImage image;
@@ -138,6 +158,11 @@ public:
         bool initialized;
         std::function<VkImageView(s32 host_level)> level_view;
         bool wait; ///< Wait for the GPU afterwards (the decoded image itself is sampled).
+        /// When set, the input holds only these layers (in order), each decoded into
+        /// layer_view(host level, layer).
+        std::span<const u32> layers{};
+        std::function<VkImageView(s32 host_level, u32 layer)> layer_view{};
+        u32 levels{~u32{0}};
     };
 
     /// Decodes `info`'s ASTC data in `map` into `target`. `skip` leading levels are absent on the

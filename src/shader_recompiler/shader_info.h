@@ -143,6 +143,35 @@ enum class TexturePixelFormat {
     D32_FLOAT_S8_UINT,
 };
 
+// Returns true for uncompressed color formats with exactly 32 bits per texel.
+// Byte-addressed B32 image views reinterpret one texel as a 32-bit word.
+[[nodiscard]] constexpr bool IsByteAddressed32BitColorFormat(TexturePixelFormat format) {
+    switch (format) {
+    case TexturePixelFormat::A8B8G8R8_UNORM:
+    case TexturePixelFormat::A8B8G8R8_SNORM:
+    case TexturePixelFormat::A8B8G8R8_SINT:
+    case TexturePixelFormat::A8B8G8R8_UINT:
+    case TexturePixelFormat::A2B10G10R10_UNORM:
+    case TexturePixelFormat::A2B10G10R10_UINT:
+    case TexturePixelFormat::A2R10G10B10_UNORM:
+    case TexturePixelFormat::B10G11R11_FLOAT:
+    case TexturePixelFormat::B8G8R8A8_UNORM:
+    case TexturePixelFormat::B8G8R8A8_SRGB:
+    case TexturePixelFormat::R16G16_UNORM:
+    case TexturePixelFormat::R16G16_FLOAT:
+    case TexturePixelFormat::R16G16_UINT:
+    case TexturePixelFormat::R16G16_SINT:
+    case TexturePixelFormat::R16G16_SNORM:
+    case TexturePixelFormat::R32_FLOAT:
+    case TexturePixelFormat::R32_UINT:
+    case TexturePixelFormat::R32_SINT:
+    case TexturePixelFormat::E5B9G9R9_FLOAT:
+        return true;
+    default:
+        return false;
+    }
+}
+
 enum class ImageFormat : u32 {
     Typeless,
     R8_UINT,
@@ -234,6 +263,7 @@ struct ImageDescriptor {
     u32 cbuf_offset;
     u32 count;
     u32 size_shift;
+    bool is_byte_addressed{};
 
     auto operator<=>(const ImageDescriptor&) const = default;
 };
@@ -243,6 +273,8 @@ struct Info {
     static constexpr size_t MAX_INDIRECT_CBUFS{14};
     static constexpr size_t MAX_CBUFS{18};
     static constexpr size_t MAX_SSBOS{32};
+    bool is_task{}; ///< Switch 2 task program (Stage::Task)
+    bool is_mesh{}; ///< Switch 2 mesh program (Stage::Mesh)
 
     bool uses_workgroup_id{};
     bool uses_local_invocation_id{};

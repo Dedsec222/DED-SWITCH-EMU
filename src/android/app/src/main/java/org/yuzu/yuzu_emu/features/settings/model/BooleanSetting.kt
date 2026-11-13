@@ -9,6 +9,8 @@ package org.yuzu.yuzu_emu.features.settings.model
 import org.yuzu.yuzu_emu.utils.NativeConfig
 
 enum class BooleanSetting(override val key: String) : AbstractBooleanSetting {
+    KERNEL_SVC_TRACE("kernel_svc_trace"),
+    NX2_GPU_THREAD_SPLIT("nx2_gpu_thread_split"),
     AUDIO_MUTED("audio_muted"),
     FASTMEM("cpuopt_fastmem"),
     FASTMEM_EXCLUSIVES("cpuopt_fastmem_exclusives"),

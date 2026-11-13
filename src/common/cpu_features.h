@@ -19,7 +19,12 @@ namespace Common {
 
 class WallClock {
 public:
-    static constexpr u64 CNTFRQ = 19'200'000;         // CNTPCT_EL0 Frequency = 19.2 MHz
+    static constexpr u64 CNTFRQ = 19'200'000;
+
+    // Switch 2 guest counter frequency.
+    [[nodiscard]] constexpr u64 GetGuestCNTFRQ() const noexcept {
+        return 31'250'000;
+    }         // CNTPCT_EL0 Frequency = 19.2 MHz
     static constexpr u64 GPUTickFreq = 614'400'000;   // GM20B GPU Tick Frequency = 614.4 MHz
     static constexpr u64 CPUTickFreq = 1'020'000'000; // T210/4 A57 CPU Tick Frequency = 1020.0 MHz
 

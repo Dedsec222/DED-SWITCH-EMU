@@ -240,6 +240,14 @@ Result KPageTableBase::InitializeForProcess(Svc::CreateProcessFlag as_type, bool
     if (m_address_space_width == 39) {
         alias_region_size = GetSpaceSize(KAddressSpaceInfo::Type::Alias);
         heap_region_size = GetSpaceSize(KAddressSpaceInfo::Type::Heap);
+        // Large-memory applications need a heap VMA that can contain their physical allowance.
+        const auto memory_limit =
+            resource_limit->GetLimitValue(Svc::LimitableResource::PhysicalMemoryMax);
+        if (memory_limit > static_cast<s64>(heap_region_size)) {
+            heap_region_size = Common::AlignUp(static_cast<size_t>(memory_limit), RegionAlignment);
+            LOG_INFO(Kernel, "Large-memory heap region: {:#x} bytes, physical limit: {:#x}",
+                     heap_region_size, memory_limit);
+        }
         stack_region_size = GetSpaceSize(KAddressSpaceInfo::Type::Stack);
         kernel_map_region_size = GetSpaceSize(KAddressSpaceInfo::Type::MapSmall);
         m_code_region_start = m_address_space_start + aslr_space_start +

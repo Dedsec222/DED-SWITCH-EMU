@@ -140,7 +140,9 @@ add_library(core STATIC
     file_sys/savedata_factory.h
     file_sys/sdmc_factory.cpp
     file_sys/sdmc_factory.h
+    file_sys/nup.cpp
     file_sys/submission_package.cpp
+    file_sys/nup.h
     file_sys/submission_package.h
     file_sys/system_archive/data/font_chinese_simplified.cpp
     file_sys/system_archive/data/font_chinese_simplified.h
@@ -541,6 +543,10 @@ add_library(core STATIC
     hle/service/audio/hardware_opus_decoder_manager.h
     hle/service/audio/hardware_opus_decoder.cpp
     hle/service/audio/hardware_opus_decoder.h
+    hle/service/audio/hardware_audio_codec.cpp
+    hle/service/audio/hardware_audio_codec.h
+    hle/service/audio/nx2_sysmix.cpp
+    hle/service/audio/nx2_sysmix.h
     hle/service/bcat/backend/backend.cpp
     hle/service/bcat/backend/backend.h
     hle/service/bcat/bcat.cpp
@@ -1152,7 +1158,9 @@ add_library(core STATIC
     loader/nro.h
     loader/nso.cpp
     loader/nso.h
+    loader/nup.cpp
     loader/nsp.cpp
+    loader/nup.h
     loader/nsp.h
     loader/xci.cpp
     loader/xci.h

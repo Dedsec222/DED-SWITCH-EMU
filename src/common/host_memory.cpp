@@ -517,6 +517,14 @@ public:
         , virtual_size{virtual_size_}
     {}
 
+#ifdef __linux__
+    bool PunchHole(size_t offset, size_t length) {
+        return fd >= 0 &&
+               fallocate(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+                         static_cast<off_t>(offset), static_cast<off_t>(length)) == 0;
+    }
+#endif
+
     bool Init() {
         long page_size = sysconf(_SC_PAGESIZE);
         ASSERT_MSG(page_size == 0x1000, "page size {:#x} is incompatible with 4K paging", page_size);
@@ -538,7 +546,7 @@ public:
         fd = memfd_create("HostMemory", 0);
 #endif
         bool use_anon = false;
-        if (fd <= 0) {
+        if (fd < 0) {
             LOG_WARNING(Common_Memory, "memfd_create: {}", strerror(errno));
             use_anon = true;
         }
@@ -553,9 +561,9 @@ public:
         if (use_anon) {
             LOG_WARNING(Common_Memory, "Using private mappings instead of shared ones");
             backing_base = static_cast<u8*>(mmap(nullptr, backing_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NOCORE, -1, 0));
-            if (fd > 0) {
-                fd = -1;
+            if (fd >= 0) {
                 close(fd);
+                fd = -1;
             }
         } else {
             backing_base = static_cast<u8*>(mmap(nullptr, backing_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_NOCORE, fd, 0));
@@ -593,6 +601,9 @@ public:
     void Map(size_t virtual_offset, size_t host_offset, size_t length, MemoryPermission perms) {
         // Intersect the range with our address space.
         AdjustMap(&virtual_offset, &length);
+        if (length == 0) {
+            return;
+        }
 
         // We are removing a placeholder.
         free_manager.AllocateBlock(virtual_base + virtual_offset, length);
@@ -618,6 +629,9 @@ public:
 
         // Intersect the range with our address space.
         AdjustMap(&virtual_offset, &length);
+        if (length == 0) {
+            return;
+        }
 
         // Merge with any adjacent placeholder mappings.
         auto [merged_pointer, merged_size] =
@@ -630,6 +644,9 @@ public:
     void Protect(size_t virtual_offset, size_t length, bool read, bool write, bool execute) {
         // Intersect the range with our address space.
         AdjustMap(&virtual_offset, &length);
+        if (length == 0) {
+            return;
+        }
 
         int flags = PROT_NONE;
         if (read) {
@@ -754,8 +771,11 @@ void HostMemory::Map(size_t virtual_offset, size_t host_offset, size_t length, M
     ASSERT(virtual_offset % PageAlignment == 0);
     ASSERT(host_offset % PageAlignment == 0);
     ASSERT(length % PageAlignment == 0);
-    ASSERT(virtual_offset + length <= virtual_size);
-    ASSERT(host_offset + length <= backing_size);
+    ASSERT_OR_EXECUTE_MSG(
+        virtual_offset <= virtual_size && length <= virtual_size - virtual_offset, return;,
+        "HostMemory range outside arena: offset={:#x}, length={:#x}, size={:#x}",
+        virtual_offset, length, virtual_size);
+    ASSERT_OR_EXECUTE(host_offset <= backing_size && length <= backing_size - host_offset, return;);
     if (length == 0 || !virtual_base || !impl) {
         return;
     }
@@ -767,7 +787,10 @@ void HostMemory::Unmap(size_t virtual_offset, size_t length, bool separate_heap)
 #if !(defined(__OPENORBIS__) || defined(__managarm__))
     ASSERT(virtual_offset % PageAlignment == 0);
     ASSERT(length % PageAlignment == 0);
-    ASSERT(virtual_offset + length <= virtual_size);
+    ASSERT_OR_EXECUTE_MSG(
+        virtual_offset <= virtual_size && length <= virtual_size - virtual_offset, return;,
+        "HostMemory range outside arena: offset={:#x}, length={:#x}, size={:#x}",
+        virtual_offset, length, virtual_size);
     if (length == 0 || !virtual_base || !impl) {
         return;
     }
@@ -779,7 +802,10 @@ void HostMemory::Protect(size_t virtual_offset, size_t length, MemoryPermission 
 #if !(defined(__OPENORBIS__) || defined(__managarm__))
     ASSERT(virtual_offset % PageAlignment == 0);
     ASSERT(length % PageAlignment == 0);
-    ASSERT(virtual_offset + length <= virtual_size);
+    ASSERT_OR_EXECUTE_MSG(
+        virtual_offset <= virtual_size && length <= virtual_size - virtual_offset, return;,
+        "HostMemory range outside arena: offset={:#x}, length={:#x}, size={:#x}",
+        virtual_offset, length, virtual_size);
     if (length == 0 || !virtual_base || !impl) {
         return;
     }
@@ -790,7 +816,40 @@ void HostMemory::Protect(size_t virtual_offset, size_t length, MemoryPermission 
 #endif
 }
 
+void HostMemory::HintCold(size_t physical_offset, size_t length,
+                          std::optional<size_t> virtual_offset) const {
+    if (length == 0 || backing_base == nullptr) {
+        return;
+    }
+    const auto hint = [length](u8* address) {
+#ifdef _WIN32
+        VirtualUnlock(address, length);
+#elif defined(__linux__) && defined(MADV_COLD)
+        madvise(address, length, MADV_COLD);
+#else
+        static_cast<void>(address);
+#endif
+    };
+    hint(backing_base + physical_offset);
+    if (virtual_offset && virtual_base != nullptr &&
+        *virtual_offset + length <= virtual_size) {
+        hint(virtual_base + *virtual_offset);
+    }
+}
+
 void HostMemory::ClearBackingRegion(size_t physical_offset, size_t length, u32 fill_value) {
+    ASSERT(physical_offset <= backing_size && length <= backing_size - physical_offset);
+    if (length == 0) {
+        return;
+    }
+#ifdef __linux__
+    // Hole punching zeroes all shared aliases without committing a large guest heap to RAM.
+    // Partial pages and unsupported backing stores retain the byte-preserving memset path.
+    if (fill_value == 0 && physical_offset % PageAlignment == 0 && length % PageAlignment == 0 &&
+        impl && impl->PunchHole(physical_offset, length)) {
+        return;
+    }
+#endif
     std::memset(backing_base + physical_offset, fill_value, length);
 }
 

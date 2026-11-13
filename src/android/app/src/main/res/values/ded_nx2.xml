@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ded_nx2_settings">Switch 2 settings</string>
+    <string name="ded_nx2_settings_description">CPU, GPU, shaders and performance monitoring</string>
+    <string name="ded_nx2_cpu">Switch 2 CPU</string>
+    <string name="ded_nx2_cpu_description">ARM64 execution, accuracy and fast memory access</string>
+    <string name="ded_nx2_gpu">Switch 2 GPU</string>
+    <string name="ded_nx2_gpu_description">NX2 thread split, Vulkan rendering and shader cache</string>
+    <string name="ded_nx2_system">Switch 2 system</string>
+    <string name="ded_nx2_system_description">Language, time and emulation speed limit</string>
+    <string name="ded_nx2_split">NX2 GPU thread split</string>
+    <string name="ded_nx2_split_description">Separate GPU command processing from rendering. Requires Vulkan and compatible GPU/DMA accuracy settings. Restart the game after changing. Experimental; may regress some games.</string>
+    <string name="ded_nx2_shaders">Shaders and pipeline compilation</string>
+    <string name="ded_nx2_experimental">Experimental NX2 build • Compatibility varies by game</string>
+    <string name="ded_nx2_brand">DED SWITCH</string>
+    <string name="ded_nx2_hero">SWITCH 2 • ANDROID ARM64</string>
+    <string name="ded_nx2_subtitle">Your library. Your controls.</string>
+    <string name="ded_nx2_library_hint">Search your Switch 2 library</string>
+    <string name="ded_memory_10gb">10 GiB</string>
+    <string name="ded_memory_12gb">12 GiB (Switch 2)</string>
+</resources>

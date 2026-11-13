@@ -36,6 +36,7 @@ enum class HaltReason : u64 {
     SupervisorCall = 0x04000000,
     InstructionBreakpoint = 0x08000000,
     PrefetchAbort = 0x20000000,
+    IllegalInstruction = 0x40000000,
 };
 DECLARE_ENUM_FLAG_OPERATORS(HaltReason);
 

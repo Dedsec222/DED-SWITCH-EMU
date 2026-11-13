@@ -26,8 +26,10 @@
 #include "video_core/host_shaders/resolve_conditional_render_comp_spv.h"
 #include "video_core/host_shaders/vulkan_quad_indexed_comp_spv.h"
 #include "video_core/host_shaders/vulkan_uint8_comp_spv.h"
+#include "video_core/host_shaders/vulkan_vertex_repack_comp_spv.h"
 #include "video_core/host_shaders/block_linear_unswizzle_3d_bcn_comp_spv.h"
 #include "video_core/renderer_vulkan/vk_compute_pass.h"
+#include "video_core/renderer_vulkan/vertex_repack.h"
 #include "video_core/surface.h"
 #include "video_core/renderer_vulkan/vk_descriptor_pool.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
@@ -324,6 +326,63 @@ ComputePass::ComputePass(const Device& device_, Scheduler& scheduler, Descriptor
 
 ComputePass::~ComputePass() = default;
 
+VertexRepackPass::VertexRepackPass(const Device& device_, Scheduler& scheduler_,
+                                 DescriptorPool& descriptor_pool, StagingBufferPool& staging_pool_,
+                                 ComputePassDescriptorQueue& descriptor_queue_)
+    : ComputePass(device_, scheduler_, descriptor_pool, INPUT_OUTPUT_DESCRIPTOR_SET_BINDINGS,
+                  INPUT_OUTPUT_DESCRIPTOR_UPDATE_TEMPLATE, INPUT_OUTPUT_BANK_INFO,
+                  COMPUTE_PUSH_CONSTANT_RANGE<12>, VULKAN_VERTEX_REPACK_COMP_SPV),
+      scheduler{scheduler_}, staging_pool{staging_pool_}, descriptor_queue{descriptor_queue_} {}
+
+std::optional<std::pair<VkBuffer, VkDeviceSize>> VertexRepackPass::Assemble(VkBuffer source,
+                                                                            u32 offset, u32 size,
+                                                                            u64 buffer_size) {
+    const auto parameters = MakeVertexRepackParameters(
+        offset, size, device.GetStorageBufferAlignment(), device.GetMaxStorageBufferRange(),
+        device.GetMaxComputeWorkGroupCount()[0], buffer_size);
+    if (!parameters) {
+        LOG_ERROR(Render_Vulkan, "Vertex repack exceeds device limits: offset={}, size={}", offset, size);
+        return std::nullopt;
+    }
+    const u32 num_vertices = parameters->vertices;
+    const u32 output_size = parameters->output_size;
+    const auto dest = staging_pool.Request(output_size, MemoryUsage::DeviceLocal);
+    const u32 base_offset = parameters->source_base;
+    const u32 bias = parameters->source_bias;
+    descriptor_queue.Acquire(scheduler, 2);
+    descriptor_queue.AddBuffer(source, base_offset, parameters->source_range);
+    descriptor_queue.AddBuffer(dest.buffer, dest.offset, output_size);
+    const void* data = descriptor_queue.UpdateData();
+    scheduler.RequestOutsideRenderPassOperationContext();
+    LOG_DEBUG(Render_Vulkan, "Vertex repack queued: source_size={}, output_size={}, groups={}",
+              size, output_size, parameters->dispatch_groups);
+    scheduler.Record([this, data, bias, size, num_vertices,
+                      groups = parameters->dispatch_groups](vk::CommandBuffer cmdbuf) {
+        const VkMemoryBarrier read_barrier{
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        };
+        cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, read_barrier);
+        const auto set = descriptor_allocator.Commit();
+        device.GetLogical().UpdateDescriptorSet(set, *descriptor_template, data);
+        cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
+        cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, *layout, 0, set, {});
+        const std::array<u32, 3> constants{bias, size, num_vertices * 18};
+        cmdbuf.PushConstants(*layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(constants), constants.data());
+        cmdbuf.Dispatch(groups, 1, 1);
+        const VkMemoryBarrier write_barrier{
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        };
+        cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                              VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, write_barrier);
+    });
+    return std::pair<VkBuffer, VkDeviceSize>{dest.buffer, dest.offset};
+}
+
 Uint8Pass::Uint8Pass(const Device& device_, Scheduler& scheduler_, DescriptorPool& descriptor_pool,
                      StagingBufferPool& staging_buffer_pool_,
                      ComputePassDescriptorQueue& compute_pass_descriptor_queue_)
@@ -578,6 +637,27 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
         .initialized = image.ExchangeInitialization(),
         .level_view = [&image](s32 host_level) { return image.StorageImageView(host_level); },
         .wait = true,
+        .levels = image.HostMipLevels(),
+    };
+    AssembleInto(image.info, image.host_level_offset, image.guest_size_bytes, target, map,
+                 swizzles);
+}
+
+void ASTCDecoderPass::AssembleLayers(Image& image, const StagingBufferRef& map,
+                                     std::span<const VideoCommon::SwizzleParameters> swizzles,
+                                     std::span<const u32> layers) {
+    const Target target{
+        .image = image.Handle(),
+        .aspect_mask = image.AspectMask(),
+        .initialized = image.ExchangeInitialization(),
+        .level_view = [&image](s32 host_level) { return image.StorageImageView(host_level); },
+        .wait = true,
+        .layers = layers,
+        .layer_view =
+            [&image](s32 host_level, u32 layer) {
+                return image.StorageImageLayerView(host_level, layer);
+            },
+        .levels = image.HostMipLevels(),
     };
     AssembleInto(image.info, image.host_level_offset, image.guest_size_bytes, target, map,
                  swizzles);
@@ -631,7 +711,48 @@ void ASTCDecoderPass::AssembleInto(const VideoCommon::ImageInfo& info, u32 skip,
                   : info.layer_stride;
     const size_t input_size = skip != 0 ? size_t{input_layer_stride} * info.resources.layers
                                         : guest_size_bytes;
-    for (const VideoCommon::SwizzleParameters& swizzle : swizzles) {
+    // Only some layers: one dispatch per layer and level, into that layer's own view.
+    for (size_t i = 0; i < target.layers.size(); ++i) {
+        for (const VideoCommon::SwizzleParameters& swizzle : swizzles) {
+            if (swizzle.level < static_cast<s32>(skip) ||
+                static_cast<u32>(swizzle.level - static_cast<s32>(skip)) >= target.levels)
+                continue;
+            const size_t layer_offset = i * input_layer_stride;
+            compute_pass_descriptor_queue.Acquire(scheduler, 2);
+            compute_pass_descriptor_queue.AddBuffer(map.buffer,
+                                                    map.offset + layer_offset + swizzle.buffer_offset,
+                                                    input_layer_stride - swizzle.buffer_offset);
+            compute_pass_descriptor_queue.AddImage(
+                target.layer_view(swizzle.level - static_cast<s32>(skip), target.layers[i]));
+            const void* const descriptor_data{compute_pass_descriptor_queue.UpdateData()};
+            auto params = MakeBlockLinearSwizzle2DParams(swizzle, info);
+            params.layer_stride = input_layer_stride;
+            const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 8U);
+            const u32 num_dispatches_y = Common::DivCeil(swizzle.num_tiles.height, 8U);
+            scheduler.Record([this, num_dispatches_x, num_dispatches_y, block_dims, params,
+                              descriptor_data](vk::CommandBuffer cmdbuf) {
+                const AstcPushConstants uniforms{
+                    .blocks_dims = block_dims,
+                    .layer_stride = params.layer_stride,
+                    .block_size = params.block_size,
+                    .x_shift = params.x_shift,
+                    .block_height = params.block_height,
+                    .block_height_mask = params.block_height_mask,
+                    .native_tiling = params.native_tiling,
+                };
+                const VkDescriptorSet set = descriptor_allocator.Commit();
+                device.GetLogical().UpdateDescriptorSet(set, *descriptor_template, descriptor_data);
+                cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, *layout, 0, set, {});
+                cmdbuf.PushConstants(*layout, VK_SHADER_STAGE_COMPUTE_BIT, uniforms);
+                cmdbuf.Dispatch(num_dispatches_x, num_dispatches_y, 1);
+            });
+        }
+    }
+    for (const VideoCommon::SwizzleParameters& swizzle : target.layers.empty() ? swizzles
+                                                        : std::span<const VideoCommon::SwizzleParameters>{}) {
+        if (swizzle.level < static_cast<s32>(skip) ||
+            static_cast<u32>(swizzle.level - static_cast<s32>(skip)) >= target.levels)
+            continue;
         const size_t input_offset = swizzle.buffer_offset + map.offset;
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 8U);
         const u32 num_dispatches_y = Common::DivCeil(swizzle.num_tiles.height, 8U);
@@ -690,11 +811,11 @@ void ASTCDecoderPass::AssembleInto(const VideoCommon::ImageInfo& info, u32 skip,
         cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                        vk::PIPELINE_STAGE_GRAPHICS_COMPUTE, 0, image_barrier);
     });
-    // Each decode ends with the GPU thread waiting for the host GPU to go idle. Measured here
-    // (count and time per 5 s); EDEN_NX2_ASTC_FLUSH=1 submits without waiting instead.
+    // Each decode ends with a submit to the host GPU. Measured here
+    // (count and time per 5 s); EDEN_NX2_ASTC_FLUSH=0 waits for the host GPU to go idle instead.
     static const bool flush_only = [] {
         const char* value = std::getenv("EDEN_NX2_ASTC_FLUSH");
-        return value != nullptr && value[0] == '1';
+        return value == nullptr || value[0] != '0';
     }();
     if (!target.wait) {
         return;

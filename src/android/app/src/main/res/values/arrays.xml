@@ -25,12 +25,16 @@
         <item>@string/memory_4gb</item>
         <item>@string/memory_6gb</item>
         <item>@string/memory_8gb</item>
+        <item>@string/ded_memory_10gb</item>
+        <item>@string/ded_memory_12gb</item>
     </string-array>
 
     <integer-array name="memoryValues">
         <item>0</item>
         <item>1</item>
         <item>2</item>
+        <item>3</item>
+        <item>4</item>
     </integer-array>
 
     <string-array name="clockNames">
@@ -695,5 +699,14 @@
         <item>2</item>
         <item>3</item>
         <item>4</item>
+    </integer-array>
+    <string-array name="dedProfileNames">
+        <item>Custom (manual settings)</item>
+        <item>Stable</item>
+        <item>Performance</item>
+        <item>Alien 👽 (experimental)</item>
+    </string-array>
+    <integer-array name="dedProfileValues">
+        <item>0</item><item>1</item><item>2</item><item>3</item>
     </integer-array>
 </resources>

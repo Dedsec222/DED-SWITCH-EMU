@@ -257,6 +257,10 @@ std::string_view StageName(Stage stage) {
         return "fs";
     case Stage::Compute:
         return "cs";
+    case Stage::Task:
+        return "ts";
+    case Stage::Mesh:
+        return "ms";
     }
     throw InvalidArgument("Invalid stage {}", stage);
 }

@@ -1,0 +1,10 @@
+diff --git a/src/common/settings.h b/src/common/settings.h
+--- a/src/common/settings.h
++++ b/src/common/settings.h
+@@ -365,3 +365,6 @@
+                                                     true,
+                                                     true};
++    // A Switch 2 game's own DLSS network, when supported.
++    SwitchableSetting<bool> game_dlss_network{linkage, false, "game_dlss_network",
++                                              Category::Renderer};
+     SwitchableSetting<int, true> fsr_sharpening_slider{linkage,

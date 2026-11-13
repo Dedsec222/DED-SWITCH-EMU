@@ -23,6 +23,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.PowerManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -76,6 +77,14 @@ class EmulationActivity : AppCompatActivity(), SensorEventListener, InputManager
     private lateinit var nfcReader: NfcReader
     private lateinit var inputManager: InputManager
 
+    private val thermalManager by lazy { getSystemService(PowerManager::class.java) }
+    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
+        NativeLibrary.setThermalStatus(status)
+        if (status >= PowerManager.THERMAL_STATUS_SEVERE) {
+            Toast.makeText(this, R.string.ded_thermal_active, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private var touchDownTime: Long = 0
     private val maxTapDuration = 500L
 
@@ -126,6 +135,8 @@ class EmulationActivity : AppCompatActivity(), SensorEventListener, InputManager
         super.onCreate(savedInstanceState)
 
         NativeConfig.reloadGlobalConfig()
+        thermalManager.addThermalStatusListener(mainExecutor, thermalListener)
+        NativeLibrary.setThermalStatus(thermalManager.currentThermalStatus)
 
         InputHandler.updateControllerData()
         val players = NativeConfig.getInputSettings(true)
@@ -261,6 +272,7 @@ class EmulationActivity : AppCompatActivity(), SensorEventListener, InputManager
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(romSwapStopTimeoutRunnable)
+        thermalManager.removeThermalStatusListener(thermalListener)
         super.onDestroy()
         inputManager.unregisterInputDeviceListener(this)
         stopForegroundService(this)

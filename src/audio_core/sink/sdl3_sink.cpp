@@ -146,6 +146,10 @@ public:
         stream = nullptr;
     }
 
+    bool IsReady() const override {
+        return stream != nullptr && !failed;
+    }
+
     /**
      * Start the sink stream.
      *
@@ -153,7 +157,7 @@ public:
      *                 Default false.
      */
     void Start(bool resume = false) override {
-        if (stream == nullptr || !paused) {
+        if (!IsReady() || !paused) {
             return;
         }
 

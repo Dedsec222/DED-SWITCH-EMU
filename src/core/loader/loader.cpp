@@ -28,6 +28,7 @@
 #include "core/loader/nro.h"
 #include "core/loader/nso.h"
 #include "core/loader/nsp.h"
+#include "core/loader/nup.h"
 #include "core/loader/xci.h"
 
 namespace Loader {
@@ -125,6 +126,10 @@ bool HasApplicationProgramContent(const std::shared_ptr<FileSys::NSP>& nsp) {
 } // namespace
 
 FileType IdentifyFile(FileSys::VirtualFile file) {
+    if (const auto nup_type = IdentifyFileLoader<AppLoader_Nup>(file)) {
+        return *nup_type;
+    }
+
     if (const auto nsp_type = IdentifyFileLoader<AppLoader_NSP>(file)) {
         return *nsp_type;
     } else if (const auto xci_type = IdentifyFileLoader<AppLoader_XCI>(file)) {
@@ -191,6 +196,8 @@ FileType GuessFromFilename(const std::string& name) {
         return FileType::NSP;
     else if (extension == "nsz")
         return FileType::NSZ;
+    else if (extension == "nup")
+        return FileType::NUP;
     else if (extension == "kip")
         return FileType::KIP;
     return FileType::Unknown;
@@ -214,6 +221,8 @@ std::string GetFileTypeString(FileType type) {
         return "NSP";
     case FileType::NSZ:
         return "NSZ";
+    case FileType::NUP:
+        return "NUP";
     case FileType::KIP:
         return "KIP";
     case FileType::DeconstructedRomDirectory:
@@ -309,6 +318,16 @@ std::ostream& operator<<(std::ostream& os, ResultStatus status) {
 AppLoader::AppLoader(FileSys::VirtualFile file_) : file(std::move(file_)) {}
 AppLoader::~AppLoader() = default;
 
+ResultStatus AppLoader::ReadDisplayVersion(std::string& version) {
+    FileSys::NACP control;
+    if (const ResultStatus result = ReadControlData(control);
+        result != ResultStatus::Success) {
+        return result;
+    }
+    version = control.GetVersionString();
+    return ResultStatus::Success;
+}
+
 /**
  * Get a loader for a file with a specific type
  * @param system The system context to use.
@@ -365,6 +384,9 @@ static std::unique_ptr<AppLoader> GetFileLoader(Core::System& system, FileSys::V
         return std::make_unique<AppLoader_NSP>(std::move(file), system.GetFileSystemController(),
                                                system.GetContentProvider(), program_id,
                                                program_index);
+
+    case FileType::NUP:
+        return std::make_unique<AppLoader_Nup>(std::move(file));
 
     // NX KIP (Kernel Internal Process) file format
     case FileType::KIP:
