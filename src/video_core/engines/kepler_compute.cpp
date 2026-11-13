@@ -1,3 +1,4 @@
+#include <chrono>
 // SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -1200,9 +1201,31 @@ bool KeplerCompute::ProcessOcarinaMovie(u64 program_id, u64 native_key) {
 
 void KeplerCompute::ProcessLaunch() {
     const GPUVAddr launch_desc_loc = regs.launch_desc_loc.Address();
+    constexpr u64 descriptor_size =
+        LaunchParams::NUM_LAUNCH_PARAMETERS * sizeof(u32);
+
+    if (!memory_manager.IsFullyMappedRange(launch_desc_loc, descriptor_size)) {
+        LOG_ERROR(HW_GPU,
+                  "ALIEN NX2 V4: invalid compute descriptor at {:#x}, size {}",
+                  launch_desc_loc, descriptor_size);
+        return;
+    }
+
     memory_manager.ReadBlockUnsafe(launch_desc_loc, &launch_description,
-                                   LaunchParams::NUM_LAUNCH_PARAMETERS * sizeof(u32));
+                                   descriptor_size);
+    const auto dispatch_start = std::chrono::steady_clock::now();
     rasterizer->DispatchCompute();
+    const auto dispatch_end = std::chrono::steady_clock::now();
+
+    const auto elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            dispatch_end - dispatch_start).count();
+
+    if (elapsed_ms >= 100) {
+        LOG_WARNING(HW_GPU,
+                    "ALIEN NX2 V4: slow compute dispatch {} ms",
+                    elapsed_ms);
+    }
 }
 
 Texture::TICEntry KeplerCompute::GetTICEntry(u32 tic_index) const {
