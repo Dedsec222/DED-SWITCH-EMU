@@ -227,7 +227,9 @@ private:
     void GetSlotEvent(HLERequestContext& ctx) {
         const auto hypercore_begin = std::chrono::steady_clock::now();
         const u32 slot = ctx.CommandBuffer()[2];
-        LOG_WARNING(Service, "(STUBBED) nx2:syncpt TIPC 22 slot={:#x}, returning an event", slot);
+        // This is a frequent NVN wait path. Avoid per-call warning-level logging;
+        // the latency warning below still records unusually slow calls.
+        LOG_DEBUG(Service, "nx2:syncpt TIPC 22 slot={:#x}, returning an event", slot);
         auto*& event = m_events[slot];
         if (event == nullptr) {
             event = m_context.CreateEvent(fmt::format("nx2:syncpt:Slot{:x}", slot));
@@ -273,6 +275,10 @@ private:
         if (event == nullptr) {
             event = m_context.CreateEvent(fmt::format("nx2:syncpt:Slot{:x}", slot));
         }
+        // Invalidate any previous GPU callback before reusing this slot, including
+        // invalid-counter requests. Otherwise an old callback may signal a new wait.
+        auto& request = m_requests[slot];
+        Cancel(request);
         if (syncpoint >= HostSyncpoints) {
             LOG_WARNING(Service, "nx2:syncpt TIPC 201 syncpoint {} out of range, signalling",
                         syncpoint);
@@ -280,8 +286,6 @@ private:
             TipcReplyWords(ctx, {});
             return;
         }
-        auto& request = m_requests[slot];
-        Cancel(request);
         // A new request starts unsignalled. Slots are reused by different client objects: title 1's
         // movie player got slot 0 after NVN's fence waits had left it signalled, took that as a
         // decoded frame and aborted when the decoder had none.
