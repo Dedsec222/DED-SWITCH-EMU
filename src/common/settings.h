@@ -263,7 +263,7 @@ struct Values {
 #endif
                                                     CpuBackend::Dynarmic,
 #ifdef HAS_NCE
-                                                    CpuBackend::Nce,
+                                                    CpuBackend::AlienNce,
 #else
                                                     CpuBackend::Dynarmic,
 #endif
@@ -497,6 +497,9 @@ struct Values {
 
     SwitchableSetting<bool> nx2_gpu_thread_split{linkage, true, "nx2_gpu_thread_split",
                                                 Category::Renderer};
+    // Experimental host-side syncpoint fast path; disabled by default.
+    SwitchableSetting<bool> nx2_alien_hypersync{linkage, false, "nx2_alien_hypersync",
+                                               Category::Renderer};
 
     SwitchableSetting<bool> use_asynchronous_gpu_emulation{linkage, true, "use_asynchronous_gpu_emulation",
                                                            Category::Renderer};

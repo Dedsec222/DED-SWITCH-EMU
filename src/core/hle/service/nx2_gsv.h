@@ -290,6 +290,9 @@ private:
         // movie player got slot 0 after NVN's fence waits had left it signalled, took that as a
         // decoded frame and aborted when the decoder had none.
         event->Clear(system.Kernel());
+        // Alien HyperSync V6: experimental shortcut disabled pending
+        // synchronization correctness testing. Always use the existing
+        // manager registration path, which handles completion and callbacks.
         request.syncpoint = syncpoint;
         const u64 generation = request.generation.fetch_add(1, std::memory_order_acq_rel) + 1;
         request.pending = true;

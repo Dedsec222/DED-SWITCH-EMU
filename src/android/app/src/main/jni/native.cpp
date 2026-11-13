@@ -1070,7 +1070,8 @@ jint Java_org_yuzu_yuzu_1emu_NativeLibrary_getShadersBuilding(JNIEnv* env, jclas
 
 jstring Java_org_yuzu_yuzu_1emu_NativeLibrary_getCpuBackend(JNIEnv* env, jclass clazz) {
     if (Settings::IsNceEnabled()) {
-        return Common::Android::ToJString(env, "NCE");
+        const bool alien = Settings::values.cpu_backend.GetValue() == Settings::CpuBackend::AlienNce;
+        return Common::Android::ToJString(env, alien ? "Alien NCE" : "NCE");
     }
 
     return Common::Android::ToJString(env, "JIT");

@@ -561,7 +561,8 @@ struct Memory::Impl {
         }();
         return !disabled && current_page_table->fastmem_arena &&
                !Settings::values.use_reactive_flushing.GetValue() &&
-               Settings::values.cpu_backend.GetValue() != Settings::CpuBackend::Nce;
+               Settings::values.cpu_backend.GetValue() != Settings::CpuBackend::Nce &&
+               Settings::values.cpu_backend.GetValue() != Settings::CpuBackend::AlienNce;
     }
 
     void RasterizerArmReadTraps(u64 vaddr, u64 size) {

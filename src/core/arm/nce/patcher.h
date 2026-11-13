@@ -104,8 +104,8 @@ private:
 private:
     void BranchToPatch(uintptr_t module_dest) {
         // Per-instruction logging can dominate large NX2 module patching.
-        // Keep original logging outside the opt-in Custom performance profile.
-        if (Settings::values.performance_profile.GetValue() != 0) {
+        // Suppress verbose per-instruction logging only for Alien NCE.
+        if (Settings::values.cpu_backend.GetValue() != Settings::CpuBackend::AlienNce) {
             LOG_DEBUG(Core_ARM, "Patch for offset {:#x}", module_dest);
         }
         curr_patch->m_branch_to_patch_relocations.push_back({c.offset(), module_dest});

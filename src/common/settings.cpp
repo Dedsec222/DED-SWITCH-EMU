@@ -198,7 +198,8 @@ bool IsFastmemEnabled() {
 static bool is_nce_enabled = false;
 
 void SetNceEnabled(bool is_39bit) {
-    const bool is_nce_selected = values.cpu_backend.GetValue() == CpuBackend::Nce;
+    const bool is_nce_selected = values.cpu_backend.GetValue() == CpuBackend::Nce ||
+                                 values.cpu_backend.GetValue() == CpuBackend::AlienNce;
     if (is_nce_selected && !IsFastmemEnabled()) {
         LOG_WARNING(Common, "Fastmem is required to natively execute code in a performant manner, "
                             "falling back to Dynarmic");

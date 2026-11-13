@@ -1201,7 +1201,8 @@
 
     <!-- CPU Backend -->
     <string name="cpu_backend_dynarmic" translatable="false">Dynarmic (JIT)</string>
-    <string name="cpu_backend_nce" translatable="false">NCE</string>
+    <string name="cpu_backend_nce" translatable="false">Original NCE</string>
+    <string name="cpu_backend_alien_nce" translatable="false">Alien NCE (Experimental)</string>
 
     <!-- CPU Accuracy -->
     <string name="cpu_accuracy_accurate">Accurate</string>
@@ -1893,4 +1894,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <string name="ded_thermal_active">Device is hot. Performance presets reduce emulation speed until it cools.</string>
     <string name="ded_kernel_trace">Detailed kernel tracing (slow)</string>
     <string name="ded_kernel_trace_description">Opt into logging every kernel call for diagnosis. Performance presets normally keep kernel logs at Info to reduce CPU and storage overhead. Fatal errors remain logged. Restart emulation after changing.</string>
+    <string name="ded_alien_hypersync" translatable="false">Alien HyperSync (Experimental)</string>
+    <string name="ded_alien_hypersync_description" translatable="false">Experimental exact-match syncpoint fast path. Restart game to apply. No FPS improvement guaranteed.</string>
 </resources>

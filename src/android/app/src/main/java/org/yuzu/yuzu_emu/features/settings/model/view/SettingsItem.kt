@@ -771,6 +771,13 @@ abstract class SettingsItem(
             )
             put(
                 SwitchSetting(
+                    BooleanSetting.NX2_ALIEN_HYPERSYNC,
+                    titleId = R.string.ded_alien_hypersync,
+                    descriptionId = R.string.ded_alien_hypersync_description
+                )
+            )
+            put(
+                SwitchSetting(
                     BooleanSetting.RENDERER_ASYNCHRONOUS_GPU_EMULATION,
                     titleId = R.string.renderer_asynchronous_gpu_emulation,
                     descriptionId = R.string.renderer_asynchronous_gpu_emulation_description

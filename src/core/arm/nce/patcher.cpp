@@ -98,7 +98,7 @@ bool Patcher::PatchText(std::span<const u8> program_image, const Kernel::CodeSet
     const auto text_words =
         std::span<const u32>{reinterpret_cast<const u32*>(text.data()), text.size() / sizeof(u32)};
 
-    const bool experimental_nce = Settings::values.performance_profile.GetValue() == 0;
+    const bool experimental_nce = Settings::values.cpu_backend.GetValue() == Settings::CpuBackend::AlienNce;
     // Loop through instructions, patching as needed.
     for (u32 i = ModuleCodeIndex; i < static_cast<u32>(text_words.size()); i++) {
         const u32 inst = text_words[i];
