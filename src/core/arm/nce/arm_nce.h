@@ -88,6 +88,7 @@ public:
     pid_t m_thread_id{-1};
     u32 m_illegal_opcode{};
     u64 m_illegal_pc{};
+    int m_illegal_signal_code{};
 
     // Core context.
     GuestContext m_guest_ctx{};

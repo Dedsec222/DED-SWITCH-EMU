@@ -180,11 +180,9 @@ bool ArmNce::HandleGuestAccessFault(GuestContext* guest_ctx, void* raw_info, voi
 
 bool ArmNce::HandleGuestIllegalInstruction(GuestContext* guest_ctx, void* raw_info, void* raw_context) {
     const auto* info = static_cast<const siginfo_t*>(raw_info);
-    LOG_ERROR(Core_ARM,
-              "ALIEN NCE SIGILL diagnostic: si_code={}, si_addr={}",
-              info ? info->si_code : 0,
-              info ? info->si_addr : nullptr);
     auto& host_ctx = static_cast<ucontext_t*>(raw_context)->uc_mcontext;
+    // Record the signal details for reporting after returning to normal execution.
+    guest_ctx->parent->m_illegal_signal_code = info ? info->si_code : 0;
     // SIGILL identifies an instruction fetched from guest executable memory. Do not skip it.
     guest_ctx->parent->m_illegal_pc = host_ctx.pc;
     guest_ctx->parent->m_illegal_opcode = *reinterpret_cast<const volatile u32*>(host_ctx.pc);
@@ -283,7 +281,9 @@ HaltReason ArmNce::RunThread(Kernel::KThread* thread) {
     m_guest_ctx.tpidr_el0 = final_tpidr_el0;
 
     if (True(hr & HaltReason::IllegalInstruction)) {
-        LOG_ERROR(Core_ARM, "NCE guest SIGILL: pc={:#x}, opcode={:#010x}; returning to host for clean stop", m_illegal_pc, m_illegal_opcode);
+        LOG_ERROR(Core_ARM,
+                  "NCE guest SIGILL: pc={:#x}, opcode={:#010x}, si_code={}; returning to host for clean stop",
+                  m_illegal_pc, m_illegal_opcode, m_illegal_signal_code);
     }
     // Return the halt reason.
     return hr;
