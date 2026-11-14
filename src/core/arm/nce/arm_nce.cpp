@@ -185,6 +185,9 @@ bool ArmNce::HandleGuestIllegalInstruction(GuestContext* guest_ctx, void* raw_in
     guest_ctx->parent->m_illegal_signal_code = info ? info->si_code : 0;
     // SIGILL identifies an instruction fetched from guest executable memory. Do not skip it.
     guest_ctx->parent->m_illegal_pc = host_ctx.pc;
+    guest_ctx->parent->m_illegal_sp = host_ctx.sp;
+    guest_ctx->parent->m_illegal_lr = host_ctx.regs[30];
+    guest_ctx->parent->m_illegal_fp = host_ctx.regs[29];
     guest_ctx->parent->m_illegal_opcode = *reinterpret_cast<const volatile u32*>(host_ctx.pc);
     guest_ctx->esr_el1.fetch_or(static_cast<u64>(HaltReason::IllegalInstruction));
     auto& params = guest_ctx->parent->m_running_thread->GetNativeExecutionParameters();
@@ -282,8 +285,9 @@ HaltReason ArmNce::RunThread(Kernel::KThread* thread) {
 
     if (True(hr & HaltReason::IllegalInstruction)) {
         LOG_ERROR(Core_ARM,
-                  "NCE guest SIGILL: pc={:#x}, opcode={:#010x}, si_code={}; returning to host for clean stop",
-                  m_illegal_pc, m_illegal_opcode, m_illegal_signal_code);
+                  "NCE guest SIGILL: pc={:#x}, opcode={:#010x}, si_code={}, sp={:#x}, lr={:#x}, fp={:#x}; returning to host for clean stop",
+                  m_illegal_pc, m_illegal_opcode, m_illegal_signal_code,
+                  m_illegal_sp, m_illegal_lr, m_illegal_fp);
     }
     // Return the halt reason.
     return hr;
@@ -441,7 +445,6 @@ void ArmNce::ClearInstructionCache() {
 #ifdef __aarch64__
     // Ensure all previous memory operations complete
     asm volatile("dsb ish\n"
-                 "dsb ish\n"
                  "isb" ::: "memory");
 #endif
 }

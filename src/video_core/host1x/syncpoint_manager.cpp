@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "common/logging.h"
+#include "common/settings.h"
 #include "video_core/host1x/syncpoint_manager.h"
 
 namespace Tegra {
@@ -24,6 +25,23 @@ SyncpointManager::ActionHandle SyncpointManager::RegisterAction(
         action();
         return {};
     }
+    // Alien HyperSync V6: use the optimized insertion path when enabled.
+    // Both paths preserve increasing fence-value ordering.
+    if (Settings::values.nx2_alien_hypersync.GetValue()) {
+        auto it = action_storage.end();
+        while (it != action_storage.begin()) {
+            auto previous = it;
+            --previous;
+            if (previous->expected_value <= expected_value) {
+                break;
+            }
+            it = previous;
+        }
+        return action_storage.emplace(
+            it, expected_value, ++last_action_id, std::move(action))->id;
+    }
+
+    // Original behavior when HyperSync is disabled.
     auto it = action_storage.begin();
     while (it != action_storage.end()) {
         if (it->expected_value >= expected_value) {
@@ -31,7 +49,8 @@ SyncpointManager::ActionHandle SyncpointManager::RegisterAction(
         }
         ++it;
     }
-    return action_storage.emplace(it, expected_value, ++last_action_id, std::move(action))->id;
+    return action_storage.emplace(
+        it, expected_value, ++last_action_id, std::move(action))->id;
 }
 
 void SyncpointManager::DeregisterAction(std::list<RegisteredAction>& action_storage,

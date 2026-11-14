@@ -88,6 +88,9 @@ public:
     pid_t m_thread_id{-1};
     u32 m_illegal_opcode{};
     u64 m_illegal_pc{};
+    u64 m_illegal_sp{};
+    u64 m_illegal_lr{};
+    u64 m_illegal_fp{};
     int m_illegal_signal_code{};
 
     // Core context.

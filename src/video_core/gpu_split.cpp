@@ -109,7 +109,18 @@ void GpuSplit::MaybeStart(Core::System& system_) {
         LOG_INFO(HW_GPU, "GPU thread split: stopped, the accuracy settings need the caches on the front");
         return;
     }
-    if (active || !allowed) {
+    if (!allowed) {
+        // Accurate GPU/DMA cache reads require single-threaded engine ownership.
+        static bool reported_incompatible = false;
+        if (!reported_incompatible) {
+            LOG_WARNING(HW_GPU,
+                        "NX2 GPU split requested but inactive: accuracy settings "
+                        "or backend require single-threaded engine ownership");
+            reported_incompatible = true;
+        }
+        return;
+    }
+    if (active) {
         return;
     }
     system = &system_;
