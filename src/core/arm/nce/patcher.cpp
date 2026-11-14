@@ -377,6 +377,8 @@ bool Patcher::RelocateAndCopy(Common::ProcessAddress load_base, const Kernel::Co
     // Do not modify other PAC instructions without separate validation.
     if (Settings::values.cpu_backend.GetValue() == Settings::CpuBackend::AlienNce) {
         constexpr u32 Arm64Nop = 0xD503201Fu;
+        constexpr u32 Arm64Ret = 0xD65F03C0u;
+        u32 rewritten_auth_returns = 0;
         u32 rewritten_pac_hints = 0;
 
         for (u32 i = ModuleCodeIndex; i < static_cast<u32>(text_words.size()); ++i) {
@@ -388,7 +390,17 @@ bool Patcher::RelocateAndCopy(Common::ProcessAddress load_base, const Kernel::Co
                 instruction == 0xD50323FFu) { // AUTIBSP
                 text_words[i] = Arm64Nop;
                 ++rewritten_pac_hints;
+            } else if (instruction == 0xD65F0BFFu || // RETAA
+                       instruction == 0xD65F0FFFu) { // RETAB
+                text_words[i] = Arm64Ret;
+                ++rewritten_auth_returns;
             }
+        }
+
+        if (rewritten_auth_returns != 0) {
+            LOG_INFO(Core_ARM,
+                     "ALIEN NCE V7.1: rewrote {} authenticated returns",
+                     rewritten_auth_returns);
         }
 
         if (rewritten_pac_hints != 0) {
