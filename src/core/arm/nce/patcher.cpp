@@ -372,6 +372,32 @@ bool Patcher::RelocateAndCopy(Common::ProcessAddress load_base, const Kernel::Co
         }
     }
 
+    // ALIEN NCE V7: SP-based PAC identity compatibility.
+    // Match Dynarmic's identity behavior for these paired PAC hints.
+    // Do not modify other PAC instructions without separate validation.
+    if (Settings::values.cpu_backend.GetValue() == Settings::CpuBackend::AlienNce) {
+        constexpr u32 Arm64Nop = 0xD503201Fu;
+        u32 rewritten_pac_hints = 0;
+
+        for (u32 i = ModuleCodeIndex; i < static_cast<u32>(text_words.size()); ++i) {
+            const u32 instruction = text_words[i];
+
+            if (instruction == 0xD503233Fu || // PACIASP
+                instruction == 0xD50323BFu || // AUTIASP
+                instruction == 0xD503237Fu || // PACIBSP
+                instruction == 0xD50323FFu) { // AUTIBSP
+                text_words[i] = Arm64Nop;
+                ++rewritten_pac_hints;
+            }
+        }
+
+        if (rewritten_pac_hints != 0) {
+            LOG_INFO(Core_ARM,
+                     "ALIEN NCE V7: rewrote {} SP-based PAC hints",
+                     rewritten_pac_hints);
+        }
+    }
+
     // Cortex-A57 seems to treat all exclusives as ordered, but newer processors do not.
     // Convert to ordered to preserve this assumption.
     for (const ModuleTextAddress i : patch.m_exclusives) {
