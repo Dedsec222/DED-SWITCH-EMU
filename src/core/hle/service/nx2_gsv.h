@@ -2065,10 +2065,20 @@ private:
             std::scoped_lock lk{m_objects->mutex};
             const auto image = m_objects->images.find(image_id);
             if (image == m_objects->images.end()) {
+                if (m_presents <= 4 || m_presents % 600 == 0) {
+                    LOG_WARNING(Service,
+                                "ALIEN ZELDA TRACE: present={} missing image={}",
+                                m_presents, image_id);
+                }
                 return;
             }
             const auto memory = m_objects->memories.find(image->second.memory);
             if (memory == m_objects->memories.end() || memory->second.address == 0) {
+                if (m_presents <= 4 || m_presents % 600 == 0) {
+                    LOG_WARNING(Service,
+                                "ALIEN ZELDA TRACE: present={} image={} invalid memory={}",
+                                m_presents, image_id, image->second.memory);
+                }
                 return;
             }
             address = memory->second.address + image->second.offset;

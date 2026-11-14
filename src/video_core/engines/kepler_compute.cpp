@@ -1129,6 +1129,14 @@ bool KeplerCompute::ProcessOcarinaMovie(u64 program_id, u64 native_key) {
         return false;
     }
     if (IsNetwork(native_key)) {
+        static u64 skipped_network_passes = 0;
+        ++skipped_network_passes;
+        if (skipped_network_passes <= 4 ||
+            skipped_network_passes % 10000 == 0) {
+            LOG_INFO(HW_GPU,
+                     "ALIEN ZELDA TRACE: skipped movie network pass={} key={:#x}",
+                     skipped_network_passes, native_key);
+        }
         return true;
     }
     if (native_key != OutputKey) {
