@@ -1101,6 +1101,9 @@ std::optional<Texture::TICEntry> KeplerCompute::ComputeImageHandle(u32 offset) c
 // into the output image. Without a frame from this evaluation everything runs natively; if the
 // blit is ever refused, the network runs natively for the rest of the session.
 bool KeplerCompute::ProcessOcarinaMovie(u64 program_id, u64 native_key) {
+    // ALIEN NX2 diagnostic: bypass Zelda's movie shortcut.
+    // Return false so the normal compute dispatch executes.
+    return false;
     using namespace VideoCommon::OcarinaMovie;
     static bool failed = false;
     if (program_id != ProgramId || failed) {
