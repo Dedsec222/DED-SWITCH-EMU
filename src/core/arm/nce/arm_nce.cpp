@@ -178,7 +178,12 @@ bool ArmNce::HandleGuestAccessFault(GuestContext* guest_ctx, void* raw_info, voi
     return HandleFailedGuestFault(guest_ctx, raw_info, raw_context);
 }
 
-bool ArmNce::HandleGuestIllegalInstruction(GuestContext* guest_ctx, void*, void* raw_context) {
+bool ArmNce::HandleGuestIllegalInstruction(GuestContext* guest_ctx, void* raw_info, void* raw_context) {
+    const auto* info = static_cast<const siginfo_t*>(raw_info);
+    LOG_ERROR(Core_ARM,
+              "ALIEN NCE SIGILL diagnostic: si_code={}, si_addr={}",
+              info ? info->si_code : 0,
+              info ? info->si_addr : nullptr);
     auto& host_ctx = static_cast<ucontext_t*>(raw_context)->uc_mcontext;
     // SIGILL identifies an instruction fetched from guest executable memory. Do not skip it.
     guest_ctx->parent->m_illegal_pc = host_ctx.pc;
