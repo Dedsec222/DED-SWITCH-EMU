@@ -8,9 +8,6 @@
 #include <vector>
 
 #include <SDL3/SDL.h>
-#ifdef __ANDROID__
-#include <SDL3/SDL_main.h>
-#endif
 
 #include "audio_core/common/common.h"
 #include "audio_core/sink/sdl3_sink.h"
@@ -25,10 +22,6 @@ namespace {
 
 [[nodiscard]] bool InitializeAudio() {
     if (!SDL_WasInit(SDL_INIT_AUDIO)) {
-#ifdef __ANDROID__
-        // JNI starts the application without SDL's normal main wrapper.
-        SDL_SetMainReady();
-#endif
         // See https://github.com/PCSX2/pcsx2/pull/12312
         // "SDL and cubeb backends previously resulted in different names for the output which
         // caused them be identified as different applications by the OS."
