@@ -1120,8 +1120,24 @@ bool Memory::InvalidateNCE(Common::ProcessAddress vaddr, size_t size) {
     u8* const ptr = impl->GetPointerImpl(
         GetInteger(vaddr),
         [&] {
-            LOG_ERROR(HW_Memory, "Unmapped InvalidateNCE for {} bytes @ {:#x}", size,
-                      GetInteger(vaddr));
+            // ALIEN NCE V7.2: identify the first unmapped
+            // invalidations without flooding the emulator log.
+            static std::atomic<u32> unmapped_nce_reports{0};
+            const u32 report_index =
+                unmapped_nce_reports.fetch_add(
+                    1, std::memory_order_relaxed);
+
+            if (report_index < 16) {
+                LOG_ERROR(
+                    HW_Memory,
+                    "ALIEN NCE V7.2: unmapped invalidation #{} guest_addr={:#x} size={} host_caller={:p}",
+                    report_index + 1,
+                    GetInteger(vaddr),
+                    size,
+                    __builtin_extract_return_addr(
+                        __builtin_return_address(0)));
+            }
+
             mapped = false;
         },
         [&] { rasterizer = true; });
