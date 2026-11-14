@@ -385,10 +385,14 @@ bool Patcher::RelocateAndCopy(Common::ProcessAddress load_base, const Kernel::Co
             const u32 instruction = text_words[i];
 
             if (instruction == 0xD503233Fu || // PACIASP
-                instruction == 0xD50323BFu || // AUTIASP
-                instruction == 0xD503237Fu || // PACIBSP
-                instruction == 0xD50323FFu) { // AUTIBSP
+                instruction == 0xD503237Fu) { // PACIBSP
                 text_words[i] = Arm64Nop;
+                ++rewritten_pac_hints;
+            } else if (instruction == 0xD50323BFu || // AUTIASP
+                       instruction == 0xD50323FFu) { // AUTIBSP
+                // ALIEN NCE V7.3: strip PAC bits from LR.
+                // XPACI X30 = 0xDAC143FE
+                text_words[i] = 0xDAC143FEu;
                 ++rewritten_pac_hints;
             } else if (instruction == 0xD65F0BFFu || // RETAA
                        instruction == 0xD65F0FFFu) { // RETAB
