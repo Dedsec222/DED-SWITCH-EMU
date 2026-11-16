@@ -2183,8 +2183,8 @@ private:
     // EDEN_NX2_FRAME_CAPTURE=<dir>: every 120th present, save what the renderer shows as
     // nx2-frame-<n>.tga in <dir> (lets hidden test runs check the output; idea from changes.patch).
     void CaptureFrame() {
-        static const char* const directory = std::getenv("EDEN_NX2_FRAME_CAPTURE");
-        static const u64 every = [] {
+        const char* const directory = std::getenv("EDEN_NX2_FRAME_CAPTURE");
+        const u64 every = [] {
             const char* value = std::getenv("EDEN_NX2_FRAME_CAPTURE_EVERY");
             return value != nullptr ? (std::max)(u64{1}, static_cast<u64>(std::strtoull(value, nullptr, 10))) : u64{120};
         }();

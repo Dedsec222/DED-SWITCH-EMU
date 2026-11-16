@@ -574,6 +574,17 @@ static Core::SystemResultStatus RunEmulation(const std::string& filepath,
              Settings::values.log_filter.GetValue(), detailed_trace);
     LOG_INFO(Frontend, "starting");
 
+    // Opt-in diagnostic via the existing Renderer Debugging setting.
+    // Store captures in the app's private log directory.
+    if (Settings::values.renderer_debug) {
+        const auto capture_dir = Common::FS::GetEdenPath(Common::FS::EdenPath::LogDir).string();
+        setenv("EDEN_NX2_FRAME_CAPTURE", capture_dir.c_str(), 1);
+        setenv("EDEN_NX2_FRAME_CAPTURE_EVERY", "600", 1);
+        LOG_INFO(Frontend, "ALIEN NX2 frame capture enabled: {}", capture_dir);
+    } else {
+        unsetenv("EDEN_NX2_FRAME_CAPTURE");
+    }
+
     if (filepath.empty()) {
         LOG_CRITICAL(Frontend, "failed to load: filepath empty!");
         return Core::SystemResultStatus::ErrorLoader;
