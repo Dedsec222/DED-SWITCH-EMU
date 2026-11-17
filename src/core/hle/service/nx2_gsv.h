@@ -2103,9 +2103,14 @@ private:
                      device && *device == video_trace->device_address);
         }
         if (!device) {
-            LOG_WARNING(Service, "nx2:vi2 present: image {} at {:#x} has no device mapping",
-                        image_id, address);
+            LOG_WARNING(Service, "nx2:vi2 DIAG present={} image={} cpu={:#x} gpu={:#x} parent={} offset={:#x} UNMAPPED",
+                        m_presents, image_id, address, gpu_address.value_or(0), parent, parent_offset);
             return;
+        }
+        if (m_presents <= 4 || (m_presents % 600) == 0) {
+            LOG_INFO(Service, "nx2:vi2 DIAG present={} image={} cpu={:#x} gpu={:#x} device={:#x} parent={} offset={:#x} size={}x{} pitch={} format={} shown={:#x}",
+                     m_presents, image_id, address, gpu_address.value_or(0), *device,
+                     parent, parent_offset, layout.width, layout.height, layout.pitch, image_format, shown_size);
         }
         u32 crop_width = layout.width;
         u32 crop_height = layout.height;
