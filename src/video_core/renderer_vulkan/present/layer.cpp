@@ -362,7 +362,36 @@ void Layer::UpdateRawImage(const Tegra::FramebufferConfig& framebuffer, size_t i
         buffer.Flush();  // Ensure host writes are visible before the GPU copy.
     }
 
-    const VkBufferImageCopy copy{
+        // ALIEN_ZELDA_VK_DIAG_V1: observational only; never dereference guest memory outside the existing path.
+    // Samples are taken from the already-mapped staging buffer AFTER the normal unswizzle.
+    static unsigned long long alien_diag_calls = 0;
+    const auto alien_diag_present = ++alien_diag_calls;
+    if (alien_diag_present <= 4 || (alien_diag_present % 600) == 0) {
+        unsigned alien_diag_nonzero = 0;
+        unsigned alien_diag_samples = 0;
+        if (host_ptr && linear_size != 0 &&
+            image_offset <= mapped_span.size() &&
+            linear_size <= mapped_span.size() - image_offset) {
+            const auto alien_diag_bytes = mapped_span.subspan(image_offset, linear_size);
+            // 256 distributed byte samples; avoids treating a black top-left corner as a black frame.
+            for (unsigned i = 0; i < 256; ++i) {
+                const auto position = (static_cast<unsigned long long>(i) *
+                                       (alien_diag_bytes.size() - 1)) / 255;
+                alien_diag_nonzero += alien_diag_bytes[position] != 0;
+                ++alien_diag_samples;
+            }
+        }
+        LOG_INFO(Render_Vulkan,
+                 "ALIEN_ZELDA_VK_DIAG present={} addr={:#x} host_valid={} "
+                 "size={}x{} stride={} tiled_bytes={} linear_bytes={} "
+                 "native_tiling={} sampled_nonzero={} sampled_total={}",
+                 alien_diag_present, framebuffer_addr, host_ptr != nullptr,
+                 framebuffer.width, framebuffer.height, framebuffer.stride,
+                 tiled_size, linear_size, framebuffer.native_tiling,
+                 alien_diag_nonzero, alien_diag_samples);
+    }
+
+const VkBufferImageCopy copy{
         .bufferOffset = image_offset,
         .bufferRowLength = 0,
         .bufferImageHeight = 0,
