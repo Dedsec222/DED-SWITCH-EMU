@@ -2013,6 +2013,13 @@ std::optional<FramebufferTextureInfo> RasterizerVulkan::AccelerateDisplay(
                  framebuffer_addr, config.offset, config.width, config.height, pixel_stride,
                  image_view != nullptr, config.layer_stack_mask);
     }
+    static unsigned nx2_accel_count = 0;
+    if ((++nx2_accel_count % 600) == 1) {
+        LOG_INFO(HW_GPU,
+                 "NX2_PRESENT_DIAG accelerated_display={} image_found={} size={}x{}",
+                 nx2_accel_count, image_view != nullptr,
+                 config.width, config.height);
+    }
     if (!image_view) {
         return {};
     }

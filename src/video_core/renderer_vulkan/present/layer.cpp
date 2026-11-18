@@ -4,6 +4,7 @@
 // SPDX-FileCopyrightText: Copyright 2024 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
 #include <variant>
 #include "video_core/present.h"
 #include "video_core/renderer_vulkan/present/anti_alias_pass.h"
@@ -92,8 +93,16 @@ void Layer::ConfigureDraw(const Device& device, PresentPushConstants* out_push_c
                           VkSampler sampler, size_t image_index,
                           const Tegra::FramebufferConfig& framebuffer,
                           const Layout::FramebufferLayout& layout) {
-    const auto texture_info = rasterizer.AccelerateDisplay(
-        framebuffer, framebuffer.address + framebuffer.offset, framebuffer.stride);
+    // ALIEN NX2: experimental raw-display fallback.
+    // Disabled by default; enable only for a controlled Zelda test.
+    static const bool nx2_force_raw_display =
+        std::getenv("ALIEN_NX2_FORCE_RAW_DISPLAY") != nullptr;
+
+    const auto texture_info = nx2_force_raw_display
+        ? std::optional<FramebufferTextureInfo>{}
+        : rasterizer.AccelerateDisplay(
+              framebuffer, framebuffer.address + framebuffer.offset,
+              framebuffer.stride);
     const u32 texture_width = texture_info ? texture_info->width : framebuffer.width;
     const u32 texture_height = texture_info ? texture_info->height : framebuffer.height;
     const u32 scaled_width = texture_info ? texture_info->scaled_width : texture_width;

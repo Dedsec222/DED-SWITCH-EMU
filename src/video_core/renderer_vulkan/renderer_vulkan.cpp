@@ -230,6 +230,12 @@ void RendererVulkan::Composite(std::span<const Tegra::FramebufferConfig> framebu
                                 : std::chrono::steady_clock::time_point{};
 
     scheduler.RequestOutsideRenderPassOperationContext();
+    static unsigned nx2_composite_count = 0;
+    if ((++nx2_composite_count % 600) == 1) {
+        LOG_INFO(Render_Vulkan,
+                 "NX2_PRESENT_DIAG composite={} framebuffer_count={}",
+                 nx2_composite_count, framebuffers.size());
+    }
     blit_swapchain.DrawToFrame(device, rasterizer, frame, framebuffers,
                                render_window.GetFramebufferLayout(),
                                present_manager.SwapchainImageCount(),
